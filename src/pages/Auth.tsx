@@ -300,13 +300,16 @@ const Auth = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cv">Upload CV (PDF)</Label>
+                  <Label htmlFor="cv">Upload CV (Optional)</Label>
                   <Input
                     id="cv"
                     type="file"
                     accept=".pdf"
                     onChange={(e) => setCvFile(e.target.files?.[0] || null)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    You can upload your CV now or add it later from your profile
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password-signup">Password</Label>
