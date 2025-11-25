@@ -3,10 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import EditEmployeeDialog from "@/components/EditEmployeeDialog";
 
 export default function Employees() {
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
@@ -82,12 +86,13 @@ export default function Employees() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-2">Code</th>
+                  <th className="text-left p-2">ID No.</th>
                   <th className="text-left p-2">Name</th>
                   <th className="text-left p-2">Email</th>
                   <th className="text-left p-2">Department</th>
                   <th className="text-left p-2">Position</th>
                   <th className="text-left p-2">Status</th>
+                  <th className="text-left p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -105,6 +110,18 @@ export default function Employees() {
                         {employee.status}
                       </span>
                     </td>
+                    <td className="p-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedEmployee(employee);
+                          setEditDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -112,6 +129,14 @@ export default function Employees() {
           </div>
         </CardContent>
       </Card>
+
+      {selectedEmployee && (
+        <EditEmployeeDialog
+          employee={selectedEmployee}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
     </div>
   );
 }
