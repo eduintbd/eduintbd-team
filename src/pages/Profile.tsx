@@ -166,20 +166,17 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const cvFileName = `${user.id}/cv_${Date.now()}.pdf`;
+      const fileExt = cvFile.name.split('.').pop();
+      const cvFileName = `${user.id}/${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
         .from("employee-cvs")
         .upload(cvFileName, cvFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      const { data: cvUrlData } = supabase.storage
-        .from("employee-cvs")
-        .getPublicUrl(cvFileName);
-
       const { error: updateError } = await supabase
         .from("employees")
-        .update({ cv_url: cvUrlData.publicUrl })
+        .update({ cv_url: cvFileName })
         .eq("user_id", user.id);
 
       if (updateError) throw updateError;
@@ -198,26 +195,23 @@ const Profile = () => {
     if (!employeeData?.cv_url) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const fileName = employeeData.cv_url.split('/').pop();
-      const filePath = `${user.id}/${fileName}`;
-
       const { data, error } = await supabase.storage
         .from("employee-cvs")
-        .download(filePath);
+        .download(employeeData.cv_url);
 
       if (error) throw error;
 
+      const fileName = employeeData.cv_url.split('/').pop() || 'cv.pdf';
       const url = window.URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileName || 'cv.pdf';
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+
+      toast.success("CV downloaded successfully!");
     } catch (error: any) {
       toast.error("Failed to download CV: " + error.message);
     }
