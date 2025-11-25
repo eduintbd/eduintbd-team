@@ -23,6 +23,7 @@ import Leave from "./pages/Leave";
 import Attendance from "./pages/Attendance";
 import Departments from "./pages/Departments";
 import Tasks from "./pages/Tasks";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/departments" element={<Departments />} />
             <Route path="/pending-registrations" element={<PendingRegistrations />} />
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

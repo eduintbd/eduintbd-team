@@ -17,6 +17,7 @@ import {
   Clock,
   UserCheck,
   CheckSquare,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -71,6 +72,8 @@ const AppLayout = () => {
   };
 
   const menuItems = [
+    // Profile - visible to all
+    { icon: User, label: "My Profile", path: "/profile", section: "PROFILE" },
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
     { icon: UserCheck, label: "Pending Registrations", path: "/pending-registrations", section: "HR" },
@@ -127,6 +130,21 @@ const AppLayout = () => {
             </div>
           </div>
           <nav className="space-y-1">
+            {/* Profile Section */}
+            <div className="mb-4">
+              {filteredMenuItems.filter(item => item.section === "PROFILE").map((item) => (
+                <Button
+                  key={item.path}
+                  variant={location.pathname === item.path ? "secondary" : "ghost"}
+                  className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+                  onClick={() => navigate(item.path)}
+                >
+                  <item.icon className="h-4 w-4 mr-3" />
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+            
             {/* HR Section */}
             <div className="mb-4">
               <p className="text-xs font-semibold text-sidebar-foreground/50 mb-2 px-3">HUMAN RESOURCES</p>
