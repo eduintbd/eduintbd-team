@@ -41,6 +41,7 @@ const Profile = () => {
   const [uploadingBankStatement, setUploadingBankStatement] = useState(false);
   const [requestingUpdate, setRequestingUpdate] = useState(false);
   const [employeeData, setEmployeeData] = useState<any>(null);
+  const [hasPendingUpdate, setHasPendingUpdate] = useState(false);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
@@ -71,7 +72,36 @@ const Profile = () => {
 
   useEffect(() => {
     fetchEmployeeData();
+    checkPendingUpdates();
   }, []);
+
+  const checkPendingUpdates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: employee } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!employee) return;
+
+      const { data, error } = await supabase
+        .from("employee_profile_updates")
+        .select("id")
+        .eq("employee_id", employee.id)
+        .eq("status", "pending")
+        .single();
+
+      if (!error && data) {
+        setHasPendingUpdate(true);
+      }
+    } catch (error) {
+      console.error("Error checking pending updates:", error);
+    }
+  };
 
   const fetchEmployeeData = async () => {
     try {
@@ -140,42 +170,58 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Check if bank details are verified
-      if (employeeData?.bank_details_verified) {
-        toast.error("Bank details are verified. Please request an update to make changes.");
-        setSaving(false);
-        return;
+      // Prepare update data
+      const updateData = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        phone: formData.phone.trim(),
+        date_of_birth: formData.dateOfBirth || null,
+        blood_group: formData.bloodGroup.trim() || null,
+        address: formData.address.trim() || null,
+        city: formData.city.trim() || null,
+        state: formData.state.trim() || null,
+        postal_code: formData.postalCode.trim() || null,
+        country: formData.country.trim() || null,
+        emergency_contact_name: formData.emergencyContactName.trim() || null,
+        emergency_contact_phone: formData.emergencyContactPhone.trim() || null,
+        bank_name: formData.bankName.trim() || null,
+        bank_branch: formData.bankBranch.trim() || null,
+        bank_account_number: formData.bankAccountNumber.trim() || null,
+        nid_number: formData.nidNumber.trim() || null,
+        tin_number: formData.tinNumber.trim() || null,
+      };
+
+      // Create pending update request
+      const { data: updateRequest, error: updateError } = await supabase
+        .from("employee_profile_updates")
+        .insert({
+          employee_id: employeeData.id,
+          pending_data: updateData,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // Create task for manager review
+      const { error: taskError } = await supabase.functions.invoke('create-profile-review-task', {
+        body: { 
+          employeeId: employeeData.id, 
+          updateRequestId: updateRequest.id 
+        }
+      });
+
+      if (taskError) {
+        console.error('Failed to create task:', taskError);
+        toast.warning("Update request submitted, but task creation failed. Please notify your manager.");
+      } else {
+        toast.success("Profile update submitted for manager approval!");
       }
 
-      const { error } = await supabase
-        .from("employees")
-        .update({
-          first_name: formData.firstName.trim(),
-          last_name: formData.lastName.trim(),
-          phone: formData.phone.trim(),
-          date_of_birth: formData.dateOfBirth || null,
-          blood_group: formData.bloodGroup.trim() || null,
-          address: formData.address.trim() || null,
-          city: formData.city.trim() || null,
-          state: formData.state.trim() || null,
-          postal_code: formData.postalCode.trim() || null,
-          country: formData.country.trim() || null,
-          emergency_contact_name: formData.emergencyContactName.trim() || null,
-          emergency_contact_phone: formData.emergencyContactPhone.trim() || null,
-          bank_name: formData.bankName.trim() || null,
-          bank_branch: formData.bankBranch.trim() || null,
-          bank_account_number: formData.bankAccountNumber.trim() || null,
-          nid_number: formData.nidNumber.trim() || null,
-          tin_number: formData.tinNumber.trim() || null,
-        })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      toast.success("Profile updated successfully!");
-      fetchEmployeeData();
+      setHasPendingUpdate(true);
     } catch (error: any) {
-      toast.error("Failed to update profile: " + error.message);
+      toast.error("Failed to submit update: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -555,8 +601,18 @@ const Profile = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-        <p className="text-muted-foreground">Manage your personal information and documents</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
+            <p className="text-muted-foreground">Manage your personal information and documents</p>
+          </div>
+          {hasPendingUpdate && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <span className="text-sm font-medium text-amber-600">Update Pending Manager Approval</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -811,10 +867,17 @@ const Profile = () => {
                 )}
               </div>
 
-              <Button type="submit" disabled={saving}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button type="submit" disabled={saving || hasPendingUpdate}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {hasPendingUpdate ? "Update Pending Approval" : "Submit for Approval"}
+                </Button>
+                {hasPendingUpdate && (
+                  <p className="text-sm text-muted-foreground">
+                    Your previous update is pending manager approval
+                  </p>
+                )}
+              </div>
             </form>
           </CardContent>
         </Card>
