@@ -18,8 +18,11 @@ import {
   UserCheck,
   CheckSquare,
   User,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 const AppLayout = () => {
@@ -28,6 +31,7 @@ const AppLayout = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -115,85 +119,126 @@ const AppLayout = () => {
     return null;
   }
 
+  const SidebarContent = () => (
+    <>
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-8">
+          <div className="h-10 w-10 rounded-lg bg-gold flex items-center justify-center">
+            <Building2 className="h-6 w-6 text-gold-foreground" />
+          </div>
+          <div>
+            <h1 className="text-lg font-display font-bold text-sidebar-foreground">Eduint</h1>
+            <p className="text-xs text-sidebar-foreground/70">Accounting System</p>
+          </div>
+        </div>
+        <nav className="space-y-1">
+          {/* Profile Section */}
+          <div className="mb-4">
+            {filteredMenuItems.filter(item => item.section === "PROFILE").map((item) => (
+              <Button
+                key={item.path}
+                variant={location.pathname === item.path ? "secondary" : "ghost"}
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+                onClick={() => {
+                  navigate(item.path);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <item.icon className="h-4 w-4 mr-3" />
+                {item.label}
+              </Button>
+            ))}
+          </div>
+          
+          {/* HR Section */}
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-sidebar-foreground/50 mb-2 px-3">HUMAN RESOURCES</p>
+            {filteredMenuItems.filter(item => item.section === "HR").map((item) => (
+              <Button
+                key={item.path}
+                variant={location.pathname === item.path ? "secondary" : "ghost"}
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+                onClick={() => {
+                  navigate(item.path);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <item.icon className="h-4 w-4 mr-3" />
+                {item.label}
+              </Button>
+            ))}
+          </div>
+          
+          {/* Accounting Section - Only visible for admin/cfo */}
+          {filteredMenuItems.some(item => item.section === "ACCOUNTING") && (
+            <div>
+              <p className="text-xs font-semibold text-sidebar-foreground/50 mb-2 px-3">ACCOUNTING</p>
+              {filteredMenuItems.filter(item => item.section === "ACCOUNTING").map((item) => (
+                <Button
+                  key={item.path}
+                  variant={location.pathname === item.path ? "secondary" : "ghost"}
+                  className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+                  onClick={() => {
+                    navigate(item.path);
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <item.icon className="h-4 w-4 mr-3" />
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+          )}
+        </nav>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-6">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={() => {
+            handleSignOut();
+            setMobileMenuOpen(false);
+          }}
+        >
+          <LogOut className="h-4 w-4 mr-3" />
+          Sign Out
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border">
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="h-10 w-10 rounded-lg bg-gold flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-gold-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-display font-bold text-sidebar-foreground">Eduint</h1>
-              <p className="text-xs text-sidebar-foreground/70">Accounting System</p>
-            </div>
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-sidebar border-b border-sidebar-border z-50 flex items-center px-4">
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-sidebar-foreground">
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0 bg-sidebar border-sidebar-border">
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+        <div className="flex items-center gap-2 ml-4">
+          <div className="h-8 w-8 rounded-lg bg-gold flex items-center justify-center">
+            <Building2 className="h-5 w-5 text-gold-foreground" />
           </div>
-          <nav className="space-y-1">
-            {/* Profile Section */}
-            <div className="mb-4">
-              {filteredMenuItems.filter(item => item.section === "PROFILE").map((item) => (
-                <Button
-                  key={item.path}
-                  variant={location.pathname === item.path ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
-                  onClick={() => navigate(item.path)}
-                >
-                  <item.icon className="h-4 w-4 mr-3" />
-                  {item.label}
-                </Button>
-              ))}
-            </div>
-            
-            {/* HR Section */}
-            <div className="mb-4">
-              <p className="text-xs font-semibold text-sidebar-foreground/50 mb-2 px-3">HUMAN RESOURCES</p>
-              {filteredMenuItems.filter(item => item.section === "HR").map((item) => (
-                <Button
-                  key={item.path}
-                  variant={location.pathname === item.path ? "secondary" : "ghost"}
-                  className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
-                  onClick={() => navigate(item.path)}
-                >
-                  <item.icon className="h-4 w-4 mr-3" />
-                  {item.label}
-                </Button>
-              ))}
-            </div>
-            
-            {/* Accounting Section - Only visible for admin/cfo */}
-            {filteredMenuItems.some(item => item.section === "ACCOUNTING") && (
-              <div>
-                <p className="text-xs font-semibold text-sidebar-foreground/50 mb-2 px-3">ACCOUNTING</p>
-                {filteredMenuItems.filter(item => item.section === "ACCOUNTING").map((item) => (
-                  <Button
-                    key={item.path}
-                    variant={location.pathname === item.path ? "secondary" : "ghost"}
-                    className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
-                    onClick={() => navigate(item.path)}
-                  >
-                    <item.icon className="h-4 w-4 mr-3" />
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </nav>
+          <div>
+            <h1 className="text-sm font-display font-bold text-sidebar-foreground">Eduint</h1>
+            <p className="text-xs text-sidebar-foreground/70">Accounting System</p>
+          </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4 mr-3" />
-            Sign Out
-          </Button>
-        </div>
+      </header>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border">
+        <SidebarContent />
       </aside>
 
       {/* Main content */}
-      <main className="ml-64 p-8">
+      <main className="pt-16 lg:pt-0 lg:ml-64 p-4 md:p-8">
         <Outlet />
       </main>
     </div>
