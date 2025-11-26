@@ -961,6 +961,35 @@ export type Database = {
           },
         ]
       }
+      task_assignments: {
+        Row: {
+          assigned_at: string | null
+          employee_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          employee_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          employee_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_by: string | null
@@ -969,10 +998,13 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_recurring: boolean | null
           priority: string | null
+          recurrence_pattern: string | null
           status: string | null
           title: string
           updated_at: string | null
+          visibility_level: string | null
         }
         Insert: {
           assigned_by?: string | null
@@ -981,10 +1013,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring?: boolean | null
           priority?: string | null
+          recurrence_pattern?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
+          visibility_level?: string | null
         }
         Update: {
           assigned_by?: string | null
@@ -993,10 +1028,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring?: boolean | null
           priority?: string | null
+          recurrence_pattern?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
+          visibility_level?: string | null
         }
         Relationships: [
           {

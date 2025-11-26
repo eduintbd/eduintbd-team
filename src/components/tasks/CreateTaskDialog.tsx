@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface CreateTaskDialogProps {
@@ -24,23 +26,48 @@ export function CreateTaskDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [assignedTo, setAssignedTo] = useState("");
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState("");
+  const [visibilityLevel, setVisibilityLevel] = useState("private");
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("tasks").insert({
-        title,
-        description: description || null,
-        priority,
-        assigned_to: assignedTo || null,
-        assigned_by: currentEmployeeId || null,
-        due_date: dueDate || null,
-        status: "pending",
-      });
+      // Insert the task
+      const { data: taskData, error: taskError } = await supabase
+        .from("tasks")
+        .insert({
+          title,
+          description: description || null,
+          priority,
+          assigned_to: assignedTo.length === 1 ? assignedTo[0] : null,
+          assigned_by: currentEmployeeId || null,
+          due_date: dueDate || null,
+          status: "pending",
+          is_recurring: isRecurring,
+          recurrence_pattern: isRecurring ? recurrencePattern : null,
+          visibility_level: visibilityLevel,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (taskError) throw taskError;
+
+      // If multiple assignees, insert into task_assignments
+      if (assignedTo.length > 0 && taskData) {
+        const assignments = assignedTo.map((empId) => ({
+          task_id: taskData.id,
+          employee_id: empId,
+        }));
+
+        const { error: assignmentError } = await supabase
+          .from("task_assignments")
+          .insert(assignments);
+
+        if (assignmentError) throw assignmentError;
+      }
     },
     onSuccess: () => {
       toast.success("Task created successfully!");
@@ -57,8 +84,19 @@ export function CreateTaskDialog({
     setTitle("");
     setDescription("");
     setPriority("medium");
-    setAssignedTo("");
+    setAssignedTo([]);
     setDueDate("");
+    setIsRecurring(false);
+    setRecurrencePattern("");
+    setVisibilityLevel("private");
+  };
+
+  const toggleAssignee = (employeeId: string) => {
+    setAssignedTo((prev) =>
+      prev.includes(employeeId)
+        ? prev.filter((id) => id !== employeeId)
+        : [...prev, employeeId]
+    );
   };
 
   return (
@@ -90,16 +128,16 @@ export function CreateTaskDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="task-priority">Priority *</Label>
-              <select
-                id="task-priority"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger id="task-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="task-due-date">Due Date</Label>
@@ -111,25 +149,75 @@ export function CreateTaskDialog({
               />
             </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="task-assigned-to">Assign To</Label>
-            <select
-              id="task-assigned-to"
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Unassigned</option>
+            <Label>Assign To (Multiple)</Label>
+            <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
               {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.first_name} {emp.last_name} ({emp.employee_code})
-                </option>
+                <div key={emp.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`emp-${emp.id}`}
+                    checked={assignedTo.includes(emp.id)}
+                    onCheckedChange={() => toggleAssignee(emp.id)}
+                  />
+                  <Label
+                    htmlFor={`emp-${emp.id}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {emp.first_name} {emp.last_name} ({emp.employee_code})
+                  </Label>
+                </div>
               ))}
-            </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="visibility">Who Can View Task</Label>
+            <Select value={visibilityLevel} onValueChange={setVisibilityLevel}>
+              <SelectTrigger id="visibility">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="private">Private (Assignees Only)</SelectItem>
+                <SelectItem value="team">Team (Same Department)</SelectItem>
+                <SelectItem value="department">Department Wide</SelectItem>
+                <SelectItem value="public">Public (All Employees)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="recurring"
+                checked={isRecurring}
+                onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+              />
+              <Label htmlFor="recurring" className="font-normal cursor-pointer">
+                Make this a recurring task
+              </Label>
+            </div>
+
+            {isRecurring && (
+              <div className="space-y-2 pl-6">
+                <Label htmlFor="recurrence">Recurrence Pattern</Label>
+                <Select value={recurrencePattern} onValueChange={setRecurrencePattern}>
+                  <SelectTrigger id="recurrence">
+                    <SelectValue placeholder="Select pattern" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <Button
             onClick={() => createMutation.mutate()}
-            disabled={!title || createMutation.isPending}
+            disabled={!title || (isRecurring && !recurrencePattern) || createMutation.isPending}
             className="w-full"
           >
             {createMutation.isPending ? "Creating..." : "Create Task"}
