@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Download } from "lucide-react";
+import { Loader2, Upload, FileText, Download, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -34,8 +35,11 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingCV, setUploadingCV] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -79,6 +83,15 @@ const Profile = () => {
       if (error) throw error;
 
       setEmployeeData(data);
+      
+      // Load avatar preview if exists
+      if (data.avatar_url) {
+        const { data: avatarData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(data.avatar_url);
+        setAvatarPreview(avatarData.publicUrl);
+      }
+      
       setFormData({
         firstName: data.first_name || "",
         lastName: data.last_name || "",
@@ -217,6 +230,70 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setAvatarFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = avatarFile.name.split('.').pop();
+      const avatarFileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(avatarFileName, avatarFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from("employees")
+        .update({ avatar_url: avatarFileName })
+        .eq("user_id", user.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Profile picture updated successfully!");
+      setAvatarFile(null);
+      fetchEmployeeData();
+    } catch (error: any) {
+      toast.error("Failed to upload profile picture: " + error.message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -233,6 +310,48 @@ const Profile = () => {
       </div>
 
       <div className="grid gap-6">
+        {/* Profile Picture */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Picture</CardTitle>
+            <CardDescription>Upload your profile photo</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-6">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={avatarPreview} alt={`${formData.firstName} ${formData.lastName}`} />
+                <AvatarFallback className="text-2xl">
+                  {formData.firstName?.[0]}{formData.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="avatarUpload">Choose Image</Label>
+                  <Input
+                    id="avatarUpload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG, or WEBP. Maximum file size: 5MB
+                  </p>
+                </div>
+                <Button
+                  onClick={handleAvatarUpload}
+                  disabled={!avatarFile || uploadingAvatar}
+                  variant="secondary"
+                  size="sm"
+                >
+                  {uploadingAvatar && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Upload className="mr-2 h-4 w-4" />
+                  {employeeData?.avatar_url ? "Update Photo" : "Upload Photo"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Personal Information */}
         <Card>
           <CardHeader>

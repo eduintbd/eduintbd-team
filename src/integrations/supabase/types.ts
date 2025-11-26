@@ -359,6 +359,7 @@ export type Database = {
       employees: {
         Row: {
           address: string | null
+          avatar_url: string | null
           bank_account_number: string | null
           bank_branch: string | null
           bank_name: string | null
@@ -399,6 +400,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          avatar_url?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
           bank_name?: string | null
@@ -439,6 +441,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          avatar_url?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
           bank_name?: string | null
