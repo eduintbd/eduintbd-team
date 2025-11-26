@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Download, User } from "lucide-react";
+import { Loader2, Upload, FileText, Download, User, CheckCircle2, AlertCircle, Edit3 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { z } from "zod";
@@ -38,12 +38,15 @@ const Profile = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingNID, setUploadingNID] = useState(false);
   const [uploadingTIN, setUploadingTIN] = useState(false);
+  const [uploadingBankStatement, setUploadingBankStatement] = useState(false);
+  const [requestingUpdate, setRequestingUpdate] = useState(false);
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [nidFile, setNidFile] = useState<File | null>(null);
   const [tinFile, setTinFile] = useState<File | null>(null);
+  const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -137,6 +140,13 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Check if bank details are verified
+      if (employeeData?.bank_details_verified) {
+        toast.error("Bank details are verified. Please request an update to make changes.");
+        setSaving(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("employees")
         .update({
@@ -168,6 +178,28 @@ const Profile = () => {
       toast.error("Failed to update profile: " + error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRequestBankUpdate = async () => {
+    setRequestingUpdate(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("employees")
+        .update({ bank_details_update_requested: true })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Update request submitted. A manager will review your changes.");
+      fetchEmployeeData();
+    } catch (error: any) {
+      toast.error("Failed to request update: " + error.message);
+    } finally {
+      setRequestingUpdate(false);
     }
   };
 
@@ -426,6 +458,70 @@ const Profile = () => {
     }
   };
 
+  const handleBankStatementUpload = async () => {
+    if (!bankStatementFile) {
+      toast.error("Please select a bank statement or cheque");
+      return;
+    }
+
+    setUploadingBankStatement(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = bankStatementFile.name.split('.').pop();
+      const fileName = `${user.id}/bank_statement_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("bank-documents")
+        .upload(fileName, bankStatementFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from("employees")
+        .update({ bank_statement_url: fileName })
+        .eq("user_id", user.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Bank statement uploaded successfully!");
+      setBankStatementFile(null);
+      fetchEmployeeData();
+    } catch (error: any) {
+      toast.error("Failed to upload bank statement: " + error.message);
+    } finally {
+      setUploadingBankStatement(false);
+    }
+  };
+
+  const handleDownloadBankStatement = async () => {
+    if (!employeeData?.bank_statement_url) return;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("bank-documents")
+        .download(employeeData.bank_statement_url);
+
+      if (error) throw error;
+
+      const fileName = employeeData.bank_statement_url.split('/').pop() || 'bank_statement.pdf';
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("Bank statement downloaded successfully!");
+    } catch (error: any) {
+      toast.error("Failed to download bank statement: " + error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -634,7 +730,22 @@ const Profile = () => {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Banking Information</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Banking Information</h3>
+                  {employeeData?.bank_details_verified && (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-600">Verified by Manager</span>
+                    </div>
+                  )}
+                  {employeeData?.bank_details_update_requested && (
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-amber-600" />
+                      <span className="text-sm font-medium text-amber-600">Update Pending</span>
+                    </div>
+                  )}
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="bankName">Bank Name</Label>
@@ -642,6 +753,7 @@ const Profile = () => {
                       id="bankName"
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                      disabled={employeeData?.bank_details_verified}
                     />
                   </div>
                   <div className="space-y-2">
@@ -650,6 +762,7 @@ const Profile = () => {
                       id="bankBranch"
                       value={formData.bankBranch}
                       onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                      disabled={employeeData?.bank_details_verified}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
@@ -658,9 +771,22 @@ const Profile = () => {
                       id="bankAccountNumber"
                       value={formData.bankAccountNumber}
                       onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
+                      disabled={employeeData?.bank_details_verified}
                     />
                   </div>
                 </div>
+
+                {employeeData?.bank_details_verified && !employeeData?.bank_details_update_requested && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRequestBankUpdate}
+                    disabled={requestingUpdate}
+                  >
+                    {requestingUpdate && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    Request Update
+                  </Button>
+                )}
               </div>
 
               <Button type="submit" disabled={saving}>
@@ -819,6 +945,58 @@ const Profile = () => {
               {uploadingTIN && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Upload className="mr-2 h-4 w-4" />
               {employeeData?.tin_document_url ? "Update TIN" : "Upload TIN"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Bank Statement/Cheque Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Bank Statement or Cheque</CardTitle>
+            <CardDescription>Upload bank statement or cancelled cheque for verification</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {employeeData?.bank_statement_url && (
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  <span className="text-sm font-medium">Bank Document Uploaded</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadBankStatement}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="bankStatementUpload">
+                {employeeData?.bank_statement_url ? "Upload New Bank Document" : "Upload Bank Document"}
+              </Label>
+              <Input
+                id="bankStatementUpload"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(e) => setBankStatementFile(e.target.files?.[0] || null)}
+                disabled={employeeData?.bank_details_verified}
+              />
+              <p className="text-xs text-muted-foreground">
+                PDF, JPG, or PNG format. Maximum file size: 10MB
+              </p>
+            </div>
+
+            <Button
+              onClick={handleBankStatementUpload}
+              disabled={!bankStatementFile || uploadingBankStatement || employeeData?.bank_details_verified}
+              variant="secondary"
+            >
+              {uploadingBankStatement && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Upload className="mr-2 h-4 w-4" />
+              {employeeData?.bank_statement_url ? "Update Document" : "Upload Document"}
             </Button>
           </CardContent>
         </Card>
