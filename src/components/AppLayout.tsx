@@ -82,15 +82,15 @@ const AppLayout = () => {
     { icon: Calendar, label: "Leave", path: "/leave", section: "HR" },
     { icon: Clock, label: "Attendance", path: "/attendance", section: "HR" },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
-    // Accounting Section - only for admin and accountant roles
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BookOpen, label: "Chart of Accounts", path: "/accounts", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BarChart3, label: "Financial Statements", path: "/financial-statements", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BarChart3, label: "Reports", path: "/reports", section: "ACCOUNTING", roles: ["admin", "accountant"] },
+    // Accounting Section - only for admin and cfo roles
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: BookOpen, label: "Chart of Accounts", path: "/accounts", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: BarChart3, label: "Financial Statements", path: "/financial-statements", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING", roles: ["admin", "cfo"] },
+    { icon: BarChart3, label: "Reports", path: "/reports", section: "ACCOUNTING", roles: ["admin", "cfo"] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
@@ -161,7 +161,7 @@ const AppLayout = () => {
               ))}
             </div>
             
-            {/* Accounting Section - Only visible for admin/accountant */}
+            {/* Accounting Section - Only visible for admin/cfo */}
             {filteredMenuItems.some(item => item.section === "ACCOUNTING") && (
               <div>
                 <p className="text-xs font-semibold text-sidebar-foreground/50 mb-2 px-3">ACCOUNTING</p>

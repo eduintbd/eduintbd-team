@@ -142,7 +142,7 @@ export default function Tasks() {
     },
   });
 
-  const isAdmin = userRole === "admin" || userRole === "hr_manager";
+  const isAdmin = userRole === "admin" || (userRole as string) === "manager";
 
   const taskStats = {
     total: tasks?.length || 0,
