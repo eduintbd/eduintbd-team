@@ -80,21 +80,20 @@ const AppLayout = () => {
     { icon: User, label: "My Profile", path: "/profile", section: "PROFILE" },
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
-    { icon: UserCheck, label: "Pending Registrations", path: "/pending-registrations", section: "HR" },
+    { icon: UserCheck, label: "Registrations", path: "/pending-registrations", section: "HR" },
     { icon: Building2, label: "Departments", path: "/departments", section: "HR" },
     { icon: DollarSign, label: "Payroll", path: "/payroll", section: "HR" },
-    { icon: Calendar, label: "Leave", path: "/leave", section: "HR" },
+    { icon: Calendar, label: "Leave Requests", path: "/leave", section: "HR" },
     { icon: Clock, label: "Attendance", path: "/attendance", section: "HR" },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
     // Accounting Section - only for admin and accountant roles
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BookOpen, label: "Chart of Accounts", path: "/accounts", section: "ACCOUNTING", roles: ["admin", "accountant"] },
+    { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", roles: ["admin", "accountant"] },
     { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING", roles: ["admin", "accountant"] },
     { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING", roles: ["admin", "accountant"] },
     { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BarChart3, label: "Financial Statements", path: "/financial-statements", section: "ACCOUNTING", roles: ["admin", "accountant"] },
+    { icon: BarChart3, label: "Statements", path: "/financial-statements", section: "ACCOUNTING", roles: ["admin", "accountant"] },
     { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BarChart3, label: "Reports", path: "/reports", section: "ACCOUNTING", roles: ["admin", "accountant"] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
@@ -127,8 +126,8 @@ const AppLayout = () => {
             <Building2 className="h-6 w-6 text-gold-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-display font-bold text-sidebar-foreground">Eduint</h1>
-            <p className="text-xs text-sidebar-foreground/70">Accounting System</p>
+            <h1 className="text-lg font-display font-bold text-sidebar-foreground">EDUINT</h1>
+            <p className="text-xs text-sidebar-foreground/70">ERP System</p>
           </div>
         </div>
         <nav className="space-y-1">
@@ -226,8 +225,8 @@ const AppLayout = () => {
             <Building2 className="h-5 w-5 text-gold-foreground" />
           </div>
           <div>
-            <h1 className="text-sm font-display font-bold text-sidebar-foreground">Eduint</h1>
-            <p className="text-xs text-sidebar-foreground/70">Accounting System</p>
+            <h1 className="text-sm font-display font-bold text-sidebar-foreground">EDUINT</h1>
+            <p className="text-xs text-sidebar-foreground/70">ERP System</p>
           </div>
         </div>
       </header>
