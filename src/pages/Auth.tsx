@@ -113,11 +113,7 @@ const Auth = () => {
         return;
       }
 
-      const { data: cvUrlData } = supabase.storage
-        .from("employee-cvs")
-        .getPublicUrl(cvFileName);
-
-      cvUrl = cvUrlData.publicUrl;
+      cvUrl = cvFileName;
     }
 
     // Generate employee code automatically
