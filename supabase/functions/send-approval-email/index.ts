@@ -127,7 +127,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "EDUINTBD <onboarding@resend.dev>",
+        from: "EDUINTBD <support@eduintbd.com>",
         to: [email],
         subject: isApproved 
           ? "Welcome to EDUINTBD - Your Application is Approved!" 
