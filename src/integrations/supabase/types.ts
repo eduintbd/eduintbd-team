@@ -362,7 +362,10 @@ export type Database = {
           avatar_url: string | null
           bank_account_number: string | null
           bank_branch: string | null
+          bank_details_update_requested: boolean | null
+          bank_details_verified: boolean | null
           bank_name: string | null
+          bank_statement_url: string | null
           blood_group: string | null
           city: string | null
           company_email: string | null
@@ -397,13 +400,18 @@ export type Database = {
           tin_number: string | null
           updated_at: string | null
           user_id: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           address?: string | null
           avatar_url?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
+          bank_details_update_requested?: boolean | null
+          bank_details_verified?: boolean | null
           bank_name?: string | null
+          bank_statement_url?: string | null
           blood_group?: string | null
           city?: string | null
           company_email?: string | null
@@ -438,13 +446,18 @@ export type Database = {
           tin_number?: string | null
           updated_at?: string | null
           user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           address?: string | null
           avatar_url?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
+          bank_details_update_requested?: boolean | null
+          bank_details_verified?: boolean | null
           bank_name?: string | null
+          bank_statement_url?: string | null
           blood_group?: string | null
           city?: string | null
           company_email?: string | null
@@ -479,6 +492,8 @@ export type Database = {
           tin_number?: string | null
           updated_at?: string | null
           user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -500,6 +515,13 @@ export type Database = {
             columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
