@@ -89,12 +89,8 @@ const AppLayout = () => {
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
     { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "hr_manager"] },
-    { icon: DollarSign, label: "Payroll", path: "/payroll", section: "HR", roles: ["admin", "hr_manager"] },
-    { icon: Calendar, label: "Leave Requests", path: "/leave", section: "HR" },
-    { icon: Clock, label: "Attendance", path: "/attendance", section: "HR" },
+    { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "hr_manager"] },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
-    { icon: UserCheck, label: "Role Requests", path: "/role-requests", section: "HR", roles: ["admin"] },
-    { icon: Settings, label: "Admin Utilities", path: "/admin-utilities", section: "HR", roles: ["admin"] },
     // Accounting Section - only for admin and accountant roles
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", roles: ["admin", "accountant"] },
     { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", roles: ["admin", "accountant"] },

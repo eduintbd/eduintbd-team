@@ -17,14 +17,10 @@ import FinancialStatements from "./pages/FinancialStatements";
 import Assets from "./pages/Assets";
 import Reports from "./pages/Reports";
 import Employees from "./pages/Employees";
-import Payroll from "./pages/Payroll";
-import Leave from "./pages/Leave";
-import Attendance from "./pages/Attendance";
+import HROperations from "./pages/HROperations";
 import Departments from "./pages/Departments";
 import Tasks from "./pages/Tasks";
 import Profile from "./pages/Profile";
-import AdminUtilities from "./pages/AdminUtilities";
-import RoleRequests from "./pages/RoleRequests";
 
 const queryClient = new QueryClient();
 
@@ -48,14 +44,10 @@ const App = () => (
             <Route path="/assets" element={<Assets />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/employees" element={<Employees />} />
-            <Route path="/payroll" element={<Payroll />} />
-            <Route path="/leave" element={<Leave />} />
-            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/hr-operations" element={<HROperations />} />
             <Route path="/departments" element={<Departments />} />
-            <Route path="/role-requests" element={<RoleRequests />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/admin-utilities" element={<AdminUtilities />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
