@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import RequestRoleDialog from "./RequestRoleDialog";
 
 interface EditEmployeeDialogProps {
   employee: any;
@@ -37,6 +38,32 @@ export default function EditEmployeeDialog({
   const [positionId, setPositionId] = useState(employee.position_id || "");
   const [isManager, setIsManager] = useState(false);
   const [isAccountant, setIsAccountant] = useState(false);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [isFounder, setIsFounder] = useState(false);
+
+  // Check if current user is the Founder
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      const { data: employee } = await supabase
+        .from("employees")
+        .select("email")
+        .eq("user_id", user.id)
+        .single();
+      
+      return employee;
+    },
+  });
+
+  useEffect(() => {
+    if (currentUser) {
+      // Check if current user is the founder (syed@eduintbd.com)
+      setIsFounder(currentUser.email === "syed@eduintbd.com");
+    }
+  }, [currentUser]);
 
   const { data: userRoles } = useQuery({
     queryKey: ["user-roles", employee.user_id],
@@ -192,48 +219,74 @@ export default function EditEmployeeDialog({
             </Select>
           </div>
           
-          <div className="space-y-3">
-            <Label>Access Roles</Label>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="manager"
-                checked={isManager}
-                onCheckedChange={(checked) => setIsManager(checked as boolean)}
-              />
-              <label
-                htmlFor="manager"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          {isFounder ? (
+            <>
+              <div className="space-y-3">
+                <Label>Access Roles</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="manager"
+                    checked={isManager}
+                    onCheckedChange={(checked) => setIsManager(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="manager"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Manager Access
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="accountant"
+                    checked={isAccountant}
+                    onCheckedChange={(checked) => setIsAccountant(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="accountant"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Accountant/CFO Access
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  All employees have basic employee access by default
+                </p>
+              </div>
+              
+              <Button
+                onClick={() => updateMutation.mutate()}
+                disabled={updateMutation.isPending}
+                className="w-full"
               >
-                Manager Access
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="accountant"
-                checked={isAccountant}
-                onCheckedChange={(checked) => setIsAccountant(checked as boolean)}
-              />
-              <label
-                htmlFor="accountant"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                {updateMutation.isPending ? "Updating..." : "Update Employee"}
+              </Button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted">
+                <p className="text-sm text-muted-foreground">
+                  Only the Founder can directly assign higher access roles. If you need elevated permissions, you can submit a request for approval.
+                </p>
+              </div>
+              
+              <Button
+                onClick={() => setRequestDialogOpen(true)}
+                variant="outline"
+                className="w-full"
               >
-                Accountant/CFO Access
-              </label>
+                Request Higher Access
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              All employees have basic employee access by default
-            </p>
-          </div>
-          
-          <Button
-            onClick={() => updateMutation.mutate()}
-            disabled={updateMutation.isPending}
-            className="w-full"
-          >
-            {updateMutation.isPending ? "Updating..." : "Update Employee"}
-          </Button>
+          )}
         </div>
       </DialogContent>
+
+      <RequestRoleDialog
+        employeeId={employee.id}
+        open={requestDialogOpen}
+        onOpenChange={setRequestDialogOpen}
+      />
     </Dialog>
   );
 }

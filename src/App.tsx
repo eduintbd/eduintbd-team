@@ -25,6 +25,7 @@ import Departments from "./pages/Departments";
 import Tasks from "./pages/Tasks";
 import Profile from "./pages/Profile";
 import AdminUtilities from "./pages/AdminUtilities";
+import RoleRequests from "./pages/RoleRequests";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/departments" element={<Departments />} />
             <Route path="/pending-registrations" element={<PendingRegistrations />} />
+            <Route path="/role-requests" element={<RoleRequests />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin-utilities" element={<AdminUtilities />} />

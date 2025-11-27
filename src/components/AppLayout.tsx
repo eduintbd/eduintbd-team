@@ -95,6 +95,7 @@ const AppLayout = () => {
     { icon: Calendar, label: "Leave Requests", path: "/leave", section: "HR" },
     { icon: Clock, label: "Attendance", path: "/attendance", section: "HR" },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
+    { icon: UserCheck, label: "Role Requests", path: "/role-requests", section: "HR", roles: ["admin"] },
     { icon: Settings, label: "Admin Utilities", path: "/admin-utilities", section: "HR", roles: ["admin"] },
     // Accounting Section - only for admin and accountant roles
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", roles: ["admin", "accountant"] },
