@@ -424,17 +424,17 @@ export default function Employees() {
               Pending Approvals {pendingEmployees && pendingEmployees.length > 0 && `(${pendingEmployees.length})`}
             </TabsTrigger>
           )}
+          {isManagerOrAbove && (
+            <TabsTrigger value="role-requests">
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Role Requests
+            </TabsTrigger>
+          )}
           {currentUserRole === 'admin' && (
-            <>
-              <TabsTrigger value="role-requests">
-                <ShieldCheck className="h-4 w-4 mr-2" />
-                Role Requests
-              </TabsTrigger>
-              <TabsTrigger value="admin-tools">
-                <Settings className="h-4 w-4 mr-2" />
-                Admin Tools
-              </TabsTrigger>
-            </>
+            <TabsTrigger value="admin-tools">
+              <Settings className="h-4 w-4 mr-2" />
+              Admin Tools
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -612,7 +612,7 @@ export default function Employees() {
           </TabsContent>
         )}
 
-        {currentUserRole === 'admin' && (
+        {isManagerOrAbove && (
           <TabsContent value="role-requests" className="space-y-4">
             <Card>
               <CardHeader>
