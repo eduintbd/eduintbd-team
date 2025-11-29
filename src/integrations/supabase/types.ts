@@ -1249,6 +1249,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_view_task: {
+        Args: { _task_id: string; _user_id: string }
+        Returns: boolean
+      }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
