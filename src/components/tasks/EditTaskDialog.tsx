@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { MultiSelect, Option } from "@/components/ui/multi-select";
 import { toast } from "sonner";
 import { Paperclip, Send, Download, X } from "lucide-react";
 import { format } from "date-fns";
@@ -24,7 +25,7 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
   const [description, setDescription] = useState(task.description || "");
   const [priority, setPriority] = useState(task.priority);
   const [status, setStatus] = useState(task.status);
-  const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
+  const [assignedEmployees, setAssignedEmployees] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState(task.due_date || "");
   const [comment, setComment] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -72,14 +73,32 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
     enabled: open,
   });
 
+  const { data: taskAssignments } = useQuery({
+    queryKey: ["task-assignments", task.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_assignments")
+        .select("employee_id")
+        .eq("task_id", task.id);
+      if (error) throw error;
+      return data.map((a) => a.employee_id);
+    },
+    enabled: open && isAdmin,
+  });
+
   useEffect(() => {
     setTitle(task.title);
     setDescription(task.description || "");
     setPriority(task.priority);
     setStatus(task.status);
-    setAssignedTo(task.assigned_to || "");
     setDueDate(task.due_date || "");
   }, [task]);
+
+  useEffect(() => {
+    if (taskAssignments) {
+      setAssignedEmployees(taskAssignments);
+    }
+  }, [taskAssignments]);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -93,7 +112,8 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
       };
 
       if (isAdmin) {
-        updateData.assigned_to = assignedTo || null;
+        // Set the primary assignee to the first selected employee (backward compatibility)
+        updateData.assigned_to = assignedEmployees.length > 0 ? assignedEmployees[0] : null;
       }
 
       const { error } = await supabase
@@ -102,10 +122,36 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
         .eq("id", task.id);
 
       if (error) throw error;
+
+      // Update task assignments if admin
+      if (isAdmin) {
+        // Delete existing assignments
+        const { error: deleteError } = await supabase
+          .from("task_assignments")
+          .delete()
+          .eq("task_id", task.id);
+
+        if (deleteError) throw deleteError;
+
+        // Insert new assignments
+        if (assignedEmployees.length > 0) {
+          const assignments = assignedEmployees.map((empId) => ({
+            task_id: task.id,
+            employee_id: empId,
+          }));
+
+          const { error: insertError } = await supabase
+            .from("task_assignments")
+            .insert(assignments);
+
+          if (insertError) throw insertError;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Task updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-assignments", task.id] });
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -313,20 +359,18 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
             </div>
             {isAdmin && (
               <div className="space-y-2">
-                <Label htmlFor="edit-task-assigned-to">Assign To</Label>
-                <select
-                  id="edit-task-assigned-to"
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Unassigned</option>
-                  {employees?.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.employee_code})
-                    </option>
-                  ))}
-                </select>
+                <Label htmlFor="edit-task-assigned-to">Assign To (Multiple)</Label>
+                <MultiSelect
+                  options={
+                    employees?.map((emp) => ({
+                      value: emp.id,
+                      label: `${emp.first_name} ${emp.last_name} (${emp.employee_code})`,
+                    })) || []
+                  }
+                  selected={assignedEmployees}
+                  onChange={setAssignedEmployees}
+                  placeholder="Select employees..."
+                />
               </div>
             )}
           </div>
