@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { MultiSelect, Option } from "@/components/ui/multi-select";
 import { toast } from "sonner";
 import { Paperclip, Send, Download, X } from "lucide-react";
@@ -27,6 +28,8 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
   const [status, setStatus] = useState(task.status);
   const [assignedEmployees, setAssignedEmployees] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState(task.due_date || "");
+  const [isRecurring, setIsRecurring] = useState(task.is_recurring || false);
+  const [recurrencePattern, setRecurrencePattern] = useState(task.recurrence_pattern || "daily");
   const [comment, setComment] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +95,8 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
     setPriority(task.priority);
     setStatus(task.status);
     setDueDate(task.due_date || "");
+    setIsRecurring(task.is_recurring || false);
+    setRecurrencePattern(task.recurrence_pattern || "daily");
   }, [task]);
 
   useEffect(() => {
@@ -108,6 +113,8 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
         priority,
         status,
         due_date: dueDate || null,
+        is_recurring: isRecurring,
+        recurrence_pattern: isRecurring ? recurrencePattern : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -371,6 +378,37 @@ export function EditTaskDialog({ task, open, onOpenChange, isAdmin }: EditTaskDi
                   onChange={setAssignedEmployees}
                   placeholder="Select employees..."
                 />
+              </div>
+            )}
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="recurring-task"
+                checked={isRecurring}
+                onCheckedChange={setIsRecurring}
+              />
+              <Label htmlFor="recurring-task" className="cursor-pointer">
+                Recurring Task
+              </Label>
+            </div>
+            
+            {isRecurring && (
+              <div className="space-y-2">
+                <Label htmlFor="recurrence-pattern">Recurrence Pattern</Label>
+                <select
+                  id="recurrence-pattern"
+                  value={recurrencePattern}
+                  onChange={(e) => setRecurrencePattern(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
               </div>
             )}
           </div>
