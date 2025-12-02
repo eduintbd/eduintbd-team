@@ -157,55 +157,55 @@ export default function Tasks() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Task Management</h1>
-          <p className="text-muted-foreground">Manage and track all tasks</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Task Management</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Manage and track all tasks</p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Create Task
           </Button>
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-            <ListTodo className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 md:p-6 pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Total Tasks</CardTitle>
+            <ListTodo className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.total}</div>
+          <CardContent className="p-3 md:p-6 pt-0">
+            <div className="text-xl md:text-2xl font-bold">{taskStats.total}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-yellow-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 md:p-6 pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Pending</CardTitle>
+            <div className="h-3 w-3 rounded-full bg-warning" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.pending}</div>
+          <CardContent className="p-3 md:p-6 pt-0">
+            <div className="text-xl md:text-2xl font-bold">{taskStats.pending}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-blue-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 md:p-6 pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">In Progress</CardTitle>
+            <div className="h-3 w-3 rounded-full bg-primary" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.inProgress}</div>
+          <CardContent className="p-3 md:p-6 pt-0">
+            <div className="text-xl md:text-2xl font-bold">{taskStats.inProgress}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-green-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 md:p-6 pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Completed</CardTitle>
+            <div className="h-3 w-3 rounded-full bg-success" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.completed}</div>
+          <CardContent className="p-3 md:p-6 pt-0">
+            <div className="text-xl md:text-2xl font-bold">{taskStats.completed}</div>
           </CardContent>
         </Card>
       </div>
@@ -221,14 +221,16 @@ export default function Tasks() {
       />
 
       <Tabs defaultValue="kanban" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="kanban">
+        <TabsList className="w-full sm:w-auto overflow-x-auto">
+          <TabsTrigger value="kanban" className="flex-1 sm:flex-none">
             <LayoutGrid className="h-4 w-4 mr-2" />
-            Kanban Board
+            <span className="hidden sm:inline">Kanban Board</span>
+            <span className="sm:hidden">Kanban</span>
           </TabsTrigger>
-          <TabsTrigger value="list">
+          <TabsTrigger value="list" className="flex-1 sm:flex-none">
             <ListTodo className="h-4 w-4 mr-2" />
-            List View
+            <span className="hidden sm:inline">List View</span>
+            <span className="sm:hidden">List</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="kanban" className="space-y-4">

@@ -78,16 +78,16 @@ export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmploye
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="flex gap-4 overflow-x-auto pb-4 md:grid md:grid-cols-3 md:overflow-x-visible md:pb-0">
       {columns.map((column) => (
         <div
           key={column.id}
-          className="space-y-3"
+          className="min-w-[280px] flex-shrink-0 space-y-3 md:min-w-0 md:flex-shrink"
           onDrop={(e) => handleDrop(e, column.id)}
           onDragOver={handleDragOver}
         >
-          <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg">
-            <h3 className="font-semibold">{column.title}</h3>
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg sticky top-0">
+            <h3 className="font-semibold text-sm md:text-base">{column.title}</h3>
             <Badge variant="secondary">
               {tasks.filter((t) => t.status === column.id).length}
             </Badge>

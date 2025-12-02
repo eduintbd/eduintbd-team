@@ -76,287 +76,387 @@ export default function HROperations() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">HR Operations</h1>
-          <p className="text-gray-600 mt-2">Manage leave, attendance, and payroll operations</p>
-        </div>
+    <div className="space-y-4 md:space-y-6">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">HR Operations</h1>
+        <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Manage leave, attendance, and payroll operations</p>
+      </div>
 
-        <Tabs defaultValue="leave" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="leave">Leave Management</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="payroll">Payroll</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="leave" className="space-y-4">
+        <TabsList className="w-full overflow-x-auto flex sm:inline-flex">
+          <TabsTrigger value="leave" className="flex-1 sm:flex-none text-xs sm:text-sm">Leave</TabsTrigger>
+          <TabsTrigger value="attendance" className="flex-1 sm:flex-none text-xs sm:text-sm">Attendance</TabsTrigger>
+          <TabsTrigger value="payroll" className="flex-1 sm:flex-none text-xs sm:text-sm">Payroll</TabsTrigger>
+        </TabsList>
 
           {/* LEAVE MANAGEMENT TAB */}
           <TabsContent value="leave" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Leave Management</h2>
-              <Button className="bg-teal-600 hover:bg-teal-700">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+              <h2 className="text-lg md:text-xl font-semibold text-foreground">Leave Management</h2>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Request Leave
               </Button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="bg-yellow-50 border border-yellow-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Pending Requests</div>
-                    <div className="text-3xl font-bold text-yellow-600">{pendingLeave}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+              <Card className="border-l-4 border-l-warning">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Pending</div>
+                      <div className="text-2xl md:text-3xl font-bold text-warning">{pendingLeave}</div>
+                    </div>
+                    <Clock className="h-6 w-6 md:h-8 md:w-8 text-warning hidden sm:block" />
                   </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
-                </div>
-              </div>
-              <div className="bg-green-50 border border-green-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Approved This Month</div>
-                    <div className="text-3xl font-bold text-green-600">{approvedLeave}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-success">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Approved</div>
+                      <div className="text-2xl md:text-3xl font-bold text-success">{approvedLeave}</div>
+                    </div>
+                    <Calendar className="h-6 w-6 md:h-8 md:w-8 text-success hidden sm:block" />
                   </div>
-                  <Calendar className="h-8 w-8 text-green-600" />
-                </div>
-              </div>
-              <div className="bg-blue-50 border border-blue-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Total Requests</div>
-                    <div className="text-3xl font-bold text-blue-600">{leaveRequests?.length || 0}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-primary">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Total</div>
+                      <div className="text-2xl md:text-3xl font-bold text-primary">{leaveRequests?.length || 0}</div>
+                    </div>
+                    <Calendar className="h-6 w-6 md:h-8 md:w-8 text-primary hidden sm:block" />
                   </div>
-                  <Calendar className="h-8 w-8 text-blue-600" />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Leave Requests</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-100 border-b">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Employee</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Leave Type</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Start Date</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">End Date</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Days</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaveRequests?.map((request) => (
-                      <tr key={request.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {request.employee?.first_name} {request.employee?.last_name}
-                          <span className="text-xs text-gray-500 ml-2">
-                            ({request.employee?.employee_code})
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">{request.leave_type?.leave_name}</td>
-                        <td className="px-4 py-3 text-sm">{new Date(request.start_date).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-sm">{new Date(request.end_date).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-sm">{request.days_requested}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            request.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            request.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {request.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {request.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button size="sm" className="bg-teal-600 hover:bg-teal-700">Approve</Button>
-                              <Button size="sm" variant="destructive">Reject</Button>
-                            </div>
-                          )}
-                        </td>
+            <Card>
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="text-base md:text-lg">Leave Requests</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 md:p-6 md:pt-0">
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3 p-4">
+                  {leaveRequests?.map((request) => (
+                    <Card key={request.id} className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-medium text-sm">{request.employee?.first_name} {request.employee?.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{request.leave_type?.leave_name}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          request.status === 'approved' ? 'bg-success/10 text-success' :
+                          request.status === 'rejected' ? 'bg-destructive/10 text-destructive' :
+                          request.status === 'pending' ? 'bg-warning/10 text-warning' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {request.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-3">
+                        {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()} ({request.days_requested} days)
+                      </div>
+                      {request.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button size="sm" className="flex-1 text-xs">Approve</Button>
+                          <Button size="sm" variant="destructive" className="flex-1 text-xs">Reject</Button>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Employee</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Leave Type</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Start</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">End</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Days</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Status</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    </thead>
+                    <tbody>
+                      {leaveRequests?.map((request) => (
+                        <tr key={request.id} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium">
+                            {request.employee?.first_name} {request.employee?.last_name}
+                          </td>
+                          <td className="px-4 py-3 text-sm">{request.leave_type?.leave_name}</td>
+                          <td className="px-4 py-3 text-sm">{new Date(request.start_date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm">{new Date(request.end_date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm">{request.days_requested}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              request.status === 'approved' ? 'bg-success/10 text-success' :
+                              request.status === 'rejected' ? 'bg-destructive/10 text-destructive' :
+                              request.status === 'pending' ? 'bg-warning/10 text-warning' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {request.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {request.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button size="sm">Approve</Button>
+                                <Button size="sm" variant="destructive">Reject</Button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ATTENDANCE TAB */}
           <TabsContent value="attendance" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Attendance Tracking</h2>
-              <Button className="bg-teal-600 hover:bg-teal-700">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+              <h2 className="text-lg md:text-xl font-semibold text-foreground">Attendance Tracking</h2>
+              <Button className="w-full sm:w-auto">
                 <Clock className="mr-2 h-4 w-4" />
                 Clock In/Out
               </Button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="bg-green-50 border border-green-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Present Today</div>
-                    <div className="text-3xl font-bold text-green-600">{present}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+              <Card className="border-l-4 border-l-success">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Present</div>
+                      <div className="text-2xl md:text-3xl font-bold text-success">{present}</div>
+                    </div>
+                    <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-success hidden sm:block" />
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </div>
-              <div className="bg-red-50 border border-red-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Absent Today</div>
-                    <div className="text-3xl font-bold text-red-600">{absent}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-destructive">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Absent</div>
+                      <div className="text-2xl md:text-3xl font-bold text-destructive">{absent}</div>
+                    </div>
+                    <XCircle className="h-6 w-6 md:h-8 md:w-8 text-destructive hidden sm:block" />
                   </div>
-                  <XCircle className="h-8 w-8 text-red-600" />
-                </div>
-              </div>
-              <div className="bg-blue-50 border border-blue-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Total Records</div>
-                    <div className="text-3xl font-bold text-blue-600">{attendanceRecords?.length || 0}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-primary">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Records</div>
+                      <div className="text-2xl md:text-3xl font-bold text-primary">{attendanceRecords?.length || 0}</div>
+                    </div>
+                    <Clock className="h-6 w-6 md:h-8 md:w-8 text-primary hidden sm:block" />
                   </div>
-                  <Clock className="h-8 w-8 text-blue-600" />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance Records</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-100 border-b">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Date</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Employee</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Clock In</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Clock Out</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Total Hours</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attendanceRecords?.map((record) => (
-                      <tr key={record.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm">{new Date(record.attendance_date).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {record.employee?.first_name} {record.employee?.last_name}
-                          <span className="text-xs text-gray-500 ml-2">
-                            ({record.employee?.employee_code})
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{record.total_hours ? `${record.total_hours}h` : '-'}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            record.status === 'present' ? 'bg-green-100 text-green-800' :
-                            record.status === 'absent' ? 'bg-red-100 text-red-800' :
-                            record.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {record.status}
-                          </span>
-                        </td>
+            <Card>
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="text-base md:text-lg">Attendance Records</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 md:p-6 md:pt-0">
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3 p-4">
+                  {attendanceRecords?.map((record) => (
+                    <Card key={record.id} className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-medium text-sm">{record.employee?.first_name} {record.employee?.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(record.attendance_date).toLocaleDateString()}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          record.status === 'present' ? 'bg-success/10 text-success' :
+                          record.status === 'absent' ? 'bg-destructive/10 text-destructive' :
+                          record.status === 'late' ? 'bg-warning/10 text-warning' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {record.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                        <div><span className="block font-medium">In</span>{record.clock_in ? new Date(record.clock_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '-'}</div>
+                        <div><span className="block font-medium">Out</span>{record.clock_out ? new Date(record.clock_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '-'}</div>
+                        <div><span className="block font-medium">Hours</span>{record.total_hours ? `${record.total_hours}h` : '-'}</div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Date</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Employee</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Clock In</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Clock Out</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Hours</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    </thead>
+                    <tbody>
+                      {attendanceRecords?.map((record) => (
+                        <tr key={record.id} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="px-4 py-3 text-sm">{new Date(record.attendance_date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm font-medium">{record.employee?.first_name} {record.employee?.last_name}</td>
+                          <td className="px-4 py-3 text-sm">{record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-'}</td>
+                          <td className="px-4 py-3 text-sm">{record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-'}</td>
+                          <td className="px-4 py-3 text-sm">{record.total_hours ? `${record.total_hours}h` : '-'}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              record.status === 'present' ? 'bg-success/10 text-success' :
+                              record.status === 'absent' ? 'bg-destructive/10 text-destructive' :
+                              record.status === 'late' ? 'bg-warning/10 text-warning' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {record.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* PAYROLL TAB */}
           <TabsContent value="payroll" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Payroll Management</h2>
-              <Button className="bg-teal-600 hover:bg-teal-700">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+              <h2 className="text-lg md:text-xl font-semibold text-foreground">Payroll Management</h2>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 New Payroll Run
               </Button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="bg-blue-50 border border-blue-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Total Payroll Runs</div>
-                    <div className="text-3xl font-bold text-blue-600">{payrollRuns?.length || 0}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+              <Card className="border-l-4 border-l-primary">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Payroll Runs</div>
+                      <div className="text-2xl md:text-3xl font-bold text-primary">{payrollRuns?.length || 0}</div>
+                    </div>
+                    <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-primary hidden sm:block" />
                   </div>
-                  <TrendingUp className="h-8 w-8 text-blue-600" />
-                </div>
-              </div>
-              <div className="bg-green-50 border border-green-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Total Gross Pay</div>
-                    <div className="text-3xl font-bold text-green-600">${totalGross.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-success">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Gross Pay</div>
+                      <div className="text-2xl md:text-3xl font-bold text-success">${totalGross.toLocaleString()}</div>
+                    </div>
+                    <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-success hidden sm:block" />
                   </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
-                </div>
-              </div>
-              <div className="bg-teal-50 border border-teal-100 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Total Net Pay</div>
-                    <div className="text-3xl font-bold text-teal-600">${totalNet.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-accent">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Net Pay</div>
+                      <div className="text-2xl md:text-3xl font-bold text-accent">${totalNet.toLocaleString()}</div>
+                    </div>
+                    <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-accent hidden sm:block" />
                   </div>
-                  <DollarSign className="h-8 w-8 text-teal-600" />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payroll Runs</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-100 border-b">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Run Number</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Period</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Payment Date</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Gross Pay</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Deductions</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Net Pay</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payrollRuns?.map((run) => (
-                      <tr key={run.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{run.run_number}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(run.pay_period_start).toLocaleDateString()} - {new Date(run.pay_period_end).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{new Date(run.payment_date).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-sm text-green-600 font-medium">${Number(run.total_gross).toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-red-600">${Number(run.total_deductions).toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-teal-600 font-medium">${Number(run.total_net).toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            run.status === 'posted' ? 'bg-green-100 text-green-800' :
-                            run.status === 'processed' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {run.status}
-                          </span>
-                        </td>
+            <Card>
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="text-base md:text-lg">Payroll Runs</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 md:p-6 md:pt-0">
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3 p-4">
+                  {payrollRuns?.map((run) => (
+                    <Card key={run.id} className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="font-medium text-sm">{run.run_number}</p>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          run.status === 'posted' ? 'bg-success/10 text-success' :
+                          run.status === 'processed' ? 'bg-primary/10 text-primary' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {run.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {new Date(run.pay_period_start).toLocaleDateString()} - {new Date(run.pay_period_end).toLocaleDateString()}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div><span className="block font-medium text-muted-foreground">Gross</span><span className="text-success font-medium">${Number(run.total_gross).toLocaleString()}</span></div>
+                        <div><span className="block font-medium text-muted-foreground">Deduct</span><span className="text-destructive">${Number(run.total_deductions).toLocaleString()}</span></div>
+                        <div><span className="block font-medium text-muted-foreground">Net</span><span className="text-accent font-medium">${Number(run.total_net).toLocaleString()}</span></div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Run Number</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Period</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Payment Date</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Gross Pay</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Deductions</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Net Pay</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    </thead>
+                    <tbody>
+                      {payrollRuns?.map((run) => (
+                        <tr key={run.id} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium">{run.run_number}</td>
+                          <td className="px-4 py-3 text-sm">
+                            {new Date(run.pay_period_start).toLocaleDateString()} - {new Date(run.pay_period_end).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm">{new Date(run.payment_date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm text-success font-medium">${Number(run.total_gross).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm text-destructive">${Number(run.total_deductions).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm text-accent font-medium">${Number(run.total_net).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              run.status === 'posted' ? 'bg-success/10 text-success' :
+                              run.status === 'processed' ? 'bg-primary/10 text-primary' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {run.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
