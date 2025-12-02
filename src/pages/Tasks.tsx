@@ -238,6 +238,7 @@ export default function Tasks() {
               updateTaskStatusMutation.mutate({ taskId, newStatus })
             }
             isAdmin={isAdmin}
+            currentEmployeeId={currentEmployee?.id}
           />
         </TabsContent>
         <TabsContent value="list" className="space-y-4">

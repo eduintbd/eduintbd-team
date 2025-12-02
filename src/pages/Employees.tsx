@@ -141,7 +141,7 @@ export default function Employees() {
         .from("role_upgrade_requests")
         .select(`
           *,
-          employee:employees(
+          employee:employees!role_upgrade_requests_employee_id_fkey(
             first_name,
             last_name,
             email,
