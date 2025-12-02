@@ -142,7 +142,7 @@ export default function Tasks() {
   });
 
   const isAdmin = userRoles?.some(role => 
-    role === "admin" || role === "hr_manager"
+    role === "admin" || role === "manager"
   ) || false;
 
   const taskStats = {

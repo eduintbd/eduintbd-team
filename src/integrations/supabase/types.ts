@@ -221,6 +221,42 @@ export type Database = {
           },
         ]
       }
+      department_managers: {
+        Row: {
+          created_at: string | null
+          department_id: string
+          employee_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department_id: string
+          employee_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string
+          employee_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_managers_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_managers_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           created_at: string | null
@@ -1277,7 +1313,7 @@ export type Database = {
         | "operating_expense"
         | "other_expense"
       account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
-      app_role: "admin" | "hr_manager" | "accountant" | "employee"
+      app_role: "admin" | "manager" | "accountant" | "employee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1417,7 +1453,7 @@ export const Constants = {
         "other_expense",
       ],
       account_type: ["asset", "liability", "equity", "revenue", "expense"],
-      app_role: ["admin", "hr_manager", "accountant", "employee"],
+      app_role: ["admin", "manager", "accountant", "employee"],
     },
   },
 } as const

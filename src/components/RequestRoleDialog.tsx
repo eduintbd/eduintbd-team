@@ -41,7 +41,7 @@ export default function RequestRoleDialog({
         .from("role_upgrade_requests")
         .insert({
           employee_id: employeeId,
-          requested_role: requestedRole as "hr_manager" | "accountant",
+          requested_role: requestedRole as "manager" | "accountant",
           reason: reason,
         });
 
@@ -76,7 +76,7 @@ export default function RequestRoleDialog({
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="hr_manager">Manager Access</SelectItem>
+                <SelectItem value="manager">Manager Access</SelectItem>
                 <SelectItem value="accountant">Accountant/CFO Access</SelectItem>
               </SelectContent>
             </Select>

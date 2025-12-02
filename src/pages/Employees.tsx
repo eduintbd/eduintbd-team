@@ -62,7 +62,7 @@ export default function Employees() {
     },
   });
 
-  const isManagerOrAbove = currentUserRole && ['admin', 'hr_manager'].includes(currentUserRole);
+  const isManagerOrAbove = currentUserRole && ['admin', 'manager'].includes(currentUserRole);
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees"],
@@ -504,7 +504,7 @@ export default function Employees() {
                           {employee.roles?.includes('admin') && (
                             <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">Admin</span>
                           )}
-                          {employee.roles?.includes('hr_manager') && (
+                          {employee.roles?.includes('manager') && (
                             <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Manager</span>
                           )}
                           {employee.roles?.includes('accountant') && (
@@ -640,7 +640,7 @@ export default function Employees() {
                                 </p>
                               </div>
                               <Badge className="bg-blue-100 text-blue-800 font-semibold">
-                                {request.requested_role === "hr_manager" ? "Manager" : "Accountant/CFO"}
+                                {request.requested_role === "manager" ? "Manager" : "Accountant/CFO"}
                               </Badge>
                             </div>
 
@@ -713,7 +713,7 @@ export default function Employees() {
                             {(request.employee as any)?.first_name} {(request.employee as any)?.last_name}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {request.requested_role === "hr_manager" ? "Manager" : "Accountant/CFO"} Access
+                            {request.requested_role === "manager" ? "Manager" : "Accountant/CFO"} Access
                           </p>
                         </div>
                         <Badge className={request.status === "approved" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>

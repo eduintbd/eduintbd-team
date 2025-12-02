@@ -85,7 +85,7 @@ export default function EditEmployeeDialog({
     
     if (userRoles) {
       const roles = userRoles.map(r => r.role);
-      setIsManager(roles.includes("hr_manager"));
+      setIsManager(roles.includes("manager"));
       setIsAccountant(roles.includes("accountant"));
     }
   }, [employee, userRoles]);
@@ -142,7 +142,7 @@ export default function EditEmployeeDialog({
       const rolesToInsert = [];
       
       if (isManager) {
-        rolesToInsert.push({ user_id: employee.user_id, role: "hr_manager" });
+        rolesToInsert.push({ user_id: employee.user_id, role: "manager" });
       }
       
       if (isAccountant) {
