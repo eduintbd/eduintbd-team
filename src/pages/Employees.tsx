@@ -398,84 +398,135 @@ export default function Employees() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Workforce Management</h1>
-            <p className="text-gray-600 mt-2">Manage employees, departments, and access roles</p>
-          </div>
-          {isManagerOrAbove && (
-            <Button 
-              onClick={() => setAddEmployeeDialogOpen(true)}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Employee
-            </Button>
-          )}
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Workforce Management</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">Manage employees, departments, and access roles</p>
         </div>
+        {isManagerOrAbove && (
+          <Button 
+            onClick={() => setAddEmployeeDialogOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Employee
+          </Button>
+        )}
+      </div>
 
       <Tabs defaultValue="all" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="all">All Employees</TabsTrigger>
+        <TabsList className="w-full overflow-x-auto flex sm:inline-flex">
+          <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs sm:text-sm">Employees</TabsTrigger>
           {isManagerOrAbove && (
-            <TabsTrigger value="pending">
-              Pending Approvals {pendingEmployees && pendingEmployees.length > 0 && `(${pendingEmployees.length})`}
+            <TabsTrigger value="pending" className="flex-1 sm:flex-none text-xs sm:text-sm">
+              Pending {pendingEmployees && pendingEmployees.length > 0 && `(${pendingEmployees.length})`}
             </TabsTrigger>
           )}
           {isManagerOrAbove && (
-            <TabsTrigger value="role-requests">
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Role Requests
+            <TabsTrigger value="role-requests" className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <ShieldCheck className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Role Requests</span>
+              <span className="sm:hidden">Roles</span>
             </TabsTrigger>
           )}
           {currentUserRole === 'admin' && (
-            <TabsTrigger value="admin-tools">
-              <Settings className="h-4 w-4 mr-2" />
-              Admin Tools
+            <TabsTrigger value="admin-tools" className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <Settings className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Admin Tools</span>
+              <span className="sm:hidden">Admin</span>
             </TabsTrigger>
           )}
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="bg-blue-50 border border-blue-100 p-6 rounded-lg shadow-sm">
-              <div className="text-sm font-medium text-gray-600 mb-2">Total Employees</div>
-              <div className="text-3xl font-bold text-gray-900">{employees?.length || 0}</div>
-            </div>
-            <div className="bg-green-50 border border-green-100 p-6 rounded-lg shadow-sm">
-              <div className="text-sm font-medium text-gray-600 mb-2">Active</div>
-              <div className="text-3xl font-bold text-green-600">
-                {employees?.filter(e => e.status === 'active').length || 0}
-              </div>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-100 p-6 rounded-lg shadow-sm">
-              <div className="text-sm font-medium text-gray-600 mb-2">Departments</div>
-              <div className="text-3xl font-bold text-yellow-600">
-                {new Set(employees?.map(e => e.department_id)).size || 0}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+            <Card className="border-l-4 border-l-primary">
+              <CardContent className="p-4 md:p-6">
+                <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Total Employees</div>
+                <div className="text-2xl md:text-3xl font-bold text-foreground">{employees?.length || 0}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-success">
+              <CardContent className="p-4 md:p-6">
+                <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Active</div>
+                <div className="text-2xl md:text-3xl font-bold text-success">
+                  {employees?.filter(e => e.status === 'active').length || 0}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-warning">
+              <CardContent className="p-4 md:p-6">
+                <div className="text-xs md:text-sm font-medium text-muted-foreground mb-1">Departments</div>
+                <div className="text-2xl md:text-3xl font-bold text-warning">
+                  {new Set(employees?.map(e => e.department_id)).size || 0}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Directory</h3>
-              
-              {/* Search Bar */}
+          <Card>
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg mb-3">Employee Directory</CardTitle>
               <div className="relative">
-                <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                 <input
                   type="text"
-                  placeholder="Search employees by name, email, or ID..."
+                  placeholder="Search employees..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-input bg-background rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
               </div>
-            </div>
-
-            <div className="overflow-x-auto">
+            </CardHeader>
+            <CardContent className="p-0 md:p-6 md:pt-0">
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3 p-4">
+                {filteredEmployees?.map((employee) => (
+                  <Card key={employee.id} className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium text-sm">{employee.first_name} {employee.last_name}</p>
+                        <p className="text-xs text-muted-foreground">{employee.employee_code}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        employee.status === 'active' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {employee.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mb-2">
+                      <p>{employee.position?.position_title || '-'}</p>
+                      <p>{employee.department?.department_name || '-'}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {employee.roles?.includes('admin') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent/20 text-accent-foreground">Admin</span>
+                      )}
+                      {employee.roles?.includes('manager') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-primary">Manager</span>
+                      )}
+                      {employee.roles?.includes('accountant') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-warning/20 text-warning">CFO</span>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedEmployee(employee);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3 mr-2" />
+                      View/Edit
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-100 border-b">
                   <tr>
@@ -540,8 +591,9 @@ export default function Employees() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {isManagerOrAbove && (
@@ -988,7 +1040,6 @@ export default function Employees() {
         onPositionCreated={(id) => setPosition(id)}
         preselectedDepartmentId={department}
       />
-      </div>
     </div>
   );
 }
