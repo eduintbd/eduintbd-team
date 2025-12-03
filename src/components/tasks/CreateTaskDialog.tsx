@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Paperclip, X, FileIcon } from "lucide-react";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Task title is required").max(200, "Title is too long"),
@@ -48,6 +49,8 @@ export function CreateTaskDialog({
   currentEmployeeId,
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient();
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
@@ -62,6 +65,24 @@ export function CreateTaskDialog({
       visibilityLevel: "private",
     },
   });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
 
   const createMutation = useMutation({
     mutationFn: async (values: z.infer<typeof taskFormSchema>) => {
@@ -98,11 +119,41 @@ export function CreateTaskDialog({
 
         if (assignmentError) throw assignmentError;
       }
+
+      // Upload attachments if any
+      if (attachments.length > 0 && taskData && currentEmployeeId) {
+        for (const file of attachments) {
+          const filePath = `${taskData.id}/${Date.now()}-${file.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("task-attachments")
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error("Upload error:", uploadError);
+            continue;
+          }
+
+          // Save attachment metadata
+          const { error: metaError } = await supabase
+            .from("task_attachments")
+            .insert({
+              task_id: taskData.id,
+              employee_id: currentEmployeeId,
+              file_name: file.name,
+              file_path: filePath,
+              file_size: file.size,
+            });
+
+          if (metaError) console.error("Metadata error:", metaError);
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Task created successfully!");
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       form.reset();
+      setAttachments([]);
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -113,6 +164,7 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (!open) {
       form.reset();
+      setAttachments([]);
     }
   }, [open, form]);
 
@@ -343,6 +395,59 @@ export function CreateTaskDialog({
                         </FormItem>
                       )}
                     />
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Attachments */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    multiple
+                    className="hidden"
+                  />
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-dashed"
+                  >
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Add Attachment
+                  </Button>
+
+                  {attachments.length > 0 && (
+                    <div className="space-y-2">
+                      {attachments.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 bg-muted rounded-md"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm truncate">{file.name}</span>
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              ({formatFileSize(file.size)})
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAttachment(index)}
+                            className="h-6 w-6 p-0 flex-shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
