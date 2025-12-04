@@ -18,6 +18,7 @@ import {
   CheckSquare,
   User,
   Settings,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +87,7 @@ const AppLayout = () => {
   const menuItems = [
     // Profile - visible to all
     { icon: User, label: "My Profile", path: "/profile", section: "PROFILE" },
+    { icon: Mail, label: "Messages", path: "/messages", section: "PROFILE" },
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
     { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "manager"] },
