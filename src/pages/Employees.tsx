@@ -422,7 +422,7 @@ export default function Employees() {
               Pending {pendingEmployees && pendingEmployees.length > 0 && `(${pendingEmployees.length})`}
             </TabsTrigger>
           )}
-          {isManagerOrAbove && (
+          {currentUserRoles?.includes('admin') && (
             <TabsTrigger value="role-requests" className="flex-1 sm:flex-none text-xs sm:text-sm">
               <ShieldCheck className="h-4 w-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Role Requests</span>
@@ -657,7 +657,7 @@ export default function Employees() {
           </TabsContent>
         )}
 
-        {isManagerOrAbove && (
+        {currentUserRoles?.includes('admin') && (
           <TabsContent value="role-requests" className="space-y-4">
             <Card>
               <CardHeader>
