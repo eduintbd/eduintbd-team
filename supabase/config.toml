@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.admin-reset-password]
 verify_jwt = false
+
+[functions.fetch-purelymail]
+verify_jwt = false
