@@ -20,7 +20,9 @@ import {
   Plus, 
   Search,
   MailOpen,
-  RefreshCw
+  RefreshCw,
+  CloudDownload,
+  Loader2
 } from "lucide-react";
 
 interface Message {
@@ -49,11 +51,33 @@ const Messages = () => {
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Compose form state
   const [recipientId, setRecipientId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+
+  // Sync external emails from PurelyMail
+  const syncExternalEmails = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-purelymail");
+      if (error) throw error;
+      
+      if (data?.count > 0) {
+        toast.success(`Imported ${data.count} new external emails`);
+        refetchInbox();
+      } else {
+        toast.info("No new external emails");
+      }
+    } catch (error: any) {
+      console.error("Sync error:", error);
+      toast.error("Failed to sync external emails: " + error.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Get current employee
   const { data: currentEmployee } = useQuery({
@@ -274,13 +298,27 @@ const Messages = () => {
             </p>
           </div>
           
-          <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Compose
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={syncExternalEmails}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CloudDownload className="h-4 w-4" />
+              )}
+              Sync External
+            </Button>
+            <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Compose
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>New Message</DialogTitle>
@@ -333,6 +371,7 @@ const Messages = () => {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Stats */}
