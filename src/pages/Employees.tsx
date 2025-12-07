@@ -506,9 +506,6 @@ export default function Employees() {
                       {employee.roles?.includes('manager') && (
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-primary">Manager</span>
                       )}
-                      {employee.roles?.includes('accountant') && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-warning/20 text-warning">CFO</span>
-                      )}
                     </div>
                     <Button
                       variant="outline"
@@ -557,9 +554,6 @@ export default function Employees() {
                           )}
                           {employee.roles?.includes('manager') && (
                             <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Manager</span>
-                          )}
-                          {employee.roles?.includes('accountant') && (
-                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">CFO</span>
                           )}
                           {(!employee.roles || employee.roles.length === 0 || 
                             (employee.roles.length === 1 && employee.roles.includes('employee'))) && (
@@ -692,7 +686,7 @@ export default function Employees() {
                                 </p>
                               </div>
                               <Badge className="bg-blue-100 text-blue-800 font-semibold">
-                                {request.requested_role === "manager" ? "Manager" : "Accountant/CFO"}
+                                {request.requested_role === "manager" ? "Manager" : request.requested_role}
                               </Badge>
                             </div>
 
@@ -765,7 +759,7 @@ export default function Employees() {
                             {(request.employee as any)?.first_name} {(request.employee as any)?.last_name}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {request.requested_role === "manager" ? "Manager" : "Accountant/CFO"} Access
+                            {request.requested_role === "manager" ? "Manager" : request.requested_role} Access
                           </p>
                         </div>
                         <Badge className={request.status === "approved" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>

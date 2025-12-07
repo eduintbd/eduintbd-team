@@ -42,6 +42,7 @@ const AppLayout = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [isFinanceDept, setIsFinanceDept] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -61,6 +62,17 @@ const AppLayout = () => {
         .eq("user_id", session.user.id);
 
       setUserRoles(rolesData?.map(r => r.role) || ["employee"]);
+
+      // Check if user is in Finance department
+      const { data: empData } = await supabase
+        .from("employees")
+        .select(`
+          department:departments(department_code)
+        `)
+        .eq("user_id", session.user.id)
+        .single();
+
+      setIsFinanceDept(empData?.department?.department_code === 'FIN');
       setLoading(false);
     };
 
@@ -93,19 +105,26 @@ const AppLayout = () => {
     { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "manager"] },
     { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "manager"] },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
-    // Accounting Section - only for admin and accountant roles
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: FileText, label: "Statements", path: "/financial-statements", section: "ACCOUNTING", roles: ["admin", "accountant"] },
-    { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING", roles: ["admin", "accountant"] },
+    // Accounting Section - for admin and Finance department
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", financeDept: true },
+    { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", financeDept: true },
+    { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING", financeDept: true },
+    { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING", financeDept: true },
+    { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING", financeDept: true },
+    { icon: FileText, label: "Statements", path: "/financial-statements", section: "ACCOUNTING", financeDept: true },
+    { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING", financeDept: true },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (!item.roles) return true; // No role restriction
-    return item.roles.some(role => userRoles.includes(role));
+    // Finance department items: admin or Finance dept members
+    if (item.financeDept) {
+      return userRoles.includes('admin') || isFinanceDept;
+    }
+    // Role-based items
+    if (item.roles) {
+      return item.roles.some(role => userRoles.includes(role));
+    }
+    return true; // No restriction
   });
 
   if (loading) {

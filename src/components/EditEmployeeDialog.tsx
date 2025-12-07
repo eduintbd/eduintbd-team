@@ -37,7 +37,6 @@ export default function EditEmployeeDialog({
   const [departmentId, setDepartmentId] = useState(employee.department_id || "");
   const [positionId, setPositionId] = useState(employee.position_id || "");
   const [isManager, setIsManager] = useState(false);
-  const [isAccountant, setIsAccountant] = useState(false);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [isFounder, setIsFounder] = useState(false);
 
@@ -86,7 +85,6 @@ export default function EditEmployeeDialog({
     if (userRoles) {
       const roles = userRoles.map(r => r.role);
       setIsManager(roles.includes("manager"));
-      setIsAccountant(roles.includes("accountant"));
     }
   }, [employee, userRoles]);
 
@@ -145,12 +143,8 @@ export default function EditEmployeeDialog({
         rolesToInsert.push({ user_id: employee.user_id, role: "manager" });
       }
       
-      if (isAccountant) {
-        rolesToInsert.push({ user_id: employee.user_id, role: "accountant" });
-      }
-      
       // Always ensure at least employee role exists
-      if (!isManager && !isAccountant) {
+      if (!isManager) {
         rolesToInsert.push({ user_id: employee.user_id, role: "employee" });
       }
 
@@ -236,21 +230,8 @@ export default function EditEmployeeDialog({
                     Manager Access
                   </label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="accountant"
-                    checked={isAccountant}
-                    onCheckedChange={(checked) => setIsAccountant(checked as boolean)}
-                  />
-                  <label
-                    htmlFor="accountant"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Accountant/CFO Access
-                  </label>
-                </div>
                 <p className="text-xs text-muted-foreground">
-                  All employees have basic employee access by default
+                  All employees have basic employee access by default. For Finance/Accounting access, assign the employee to the Finance department.
                 </p>
               </div>
               

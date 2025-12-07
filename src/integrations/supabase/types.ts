@@ -1399,6 +1399,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_finance_department: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       account_subtype:
