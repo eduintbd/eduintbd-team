@@ -20,6 +20,7 @@ import Employees from "./pages/Employees";
 import HROperations from "./pages/HROperations";
 import Departments from "./pages/Departments";
 import Tasks from "./pages/Tasks";
+import TaskTemplates from "./pages/TaskTemplates";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Careers from "./pages/Careers";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/hr-operations" element={<HROperations />} />
             <Route path="/departments" element={<Departments />} />
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/task-templates" element={<TaskTemplates />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/messages" element={<Messages />} />
           </Route>

@@ -1266,6 +1266,94 @@ export type Database = {
           },
         ]
       }
+      task_template_items: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          due_days_offset: number | null
+          id: string
+          is_recurring: boolean | null
+          priority: string | null
+          recurrence_pattern: string | null
+          template_id: string
+          title: string
+          visibility_level: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          due_days_offset?: number | null
+          id?: string
+          is_recurring?: boolean | null
+          priority?: string | null
+          recurrence_pattern?: string | null
+          template_id: string
+          title: string
+          visibility_level?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          due_days_offset?: number | null
+          id?: string
+          is_recurring?: boolean | null
+          priority?: string | null
+          recurrence_pattern?: string | null
+          template_id?: string
+          title?: string
+          visibility_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_templates: {
+        Row: {
+          auto_assign_on_employee_creation: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_assign_on_employee_creation?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_assign_on_employee_creation?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_by: string | null

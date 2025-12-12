@@ -189,6 +189,14 @@ export default function Employees() {
 
   const approveMutation = useMutation({
     mutationFn: async () => {
+      // Get current user (approver)
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: approverEmployee } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
       // Update employee record
       const { error: updateError } = await supabase
         .from("employees")
@@ -203,6 +211,46 @@ export default function Employees() {
         .eq("id", selectedPendingEmployee.id);
 
       if (updateError) throw updateError;
+
+      // Auto-assign tasks from templates marked for auto-assignment
+      if (approverEmployee?.id) {
+        const { data: autoAssignTemplates } = await supabase
+          .from("task_templates")
+          .select(`
+            id,
+            task_template_items (*)
+          `)
+          .eq("is_active", true)
+          .eq("auto_assign_on_employee_creation", true);
+
+        if (autoAssignTemplates && autoAssignTemplates.length > 0) {
+          const tasksToCreate = [];
+          
+          for (const template of autoAssignTemplates) {
+            for (const item of template.task_template_items || []) {
+              const dueDate = new Date();
+              dueDate.setDate(dueDate.getDate() + (item.due_days_offset || 0));
+              
+              tasksToCreate.push({
+                title: item.title,
+                description: item.description,
+                priority: item.priority || 'medium',
+                status: 'pending',
+                is_recurring: item.is_recurring || false,
+                recurrence_pattern: item.recurrence_pattern,
+                visibility_level: item.visibility_level || 'private',
+                due_date: dueDate.toISOString().split('T')[0],
+                assigned_to: selectedPendingEmployee.id,
+                assigned_by: approverEmployee.id,
+              });
+            }
+          }
+
+          if (tasksToCreate.length > 0) {
+            await supabase.from("tasks").insert(tasksToCreate);
+          }
+        }
+      }
 
       const { data: posData } = await supabase
         .from("positions")
@@ -233,6 +281,7 @@ export default function Employees() {
       toast.success("Registration approved!");
       queryClient.invalidateQueries({ queryKey: ["pending-registrations"] });
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setApproveDialogOpen(false);
       resetApprovalForm();
     },

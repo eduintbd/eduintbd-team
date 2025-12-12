@@ -19,6 +19,7 @@ import {
   User,
   Settings,
   Mail,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,6 +106,7 @@ const AppLayout = () => {
     { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "manager"] },
     { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "manager"] },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
+    { icon: ClipboardList, label: "Task Templates", path: "/task-templates", section: "HR", roles: ["admin", "manager"] },
     // Accounting Section - for admin and Finance department
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", financeDept: true },
     { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", financeDept: true },
