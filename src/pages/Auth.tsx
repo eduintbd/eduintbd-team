@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2 } from "lucide-react";
 import { z } from "zod";
 
@@ -15,22 +14,10 @@ const authSchema = z.object({
   password: z.string().min(12, "Password must be at least 12 characters").max(128, "Password too long"),
 });
 
-const signupSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required").max(100, "First name too long"),
-  lastName: z.string().trim().min(1, "Last name is required").max(100, "Last name too long"),
-  email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
-  password: z.string().min(12, "Password must be at least 12 characters").max(128, "Password too long"),
-  phone: z.string().trim().min(1, "Phone is required").max(20, "Phone too long"),
-});
-
 const Auth = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [cvFile, setCvFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -40,135 +27,6 @@ const Auth = () => {
       }
     });
   }, [navigate]);
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Validate input
-    const validation = signupSchema.safeParse({ 
-      email: email.trim(), 
-      password,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      phone: phone.trim(),
-    });
-    
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      setLoading(false);
-      return;
-    }
-
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-      },
-    });
-
-    if (signUpError) {
-      console.error("Sign up error:", signUpError);
-      if (signUpError.message.includes("already registered")) {
-        toast.error("This email is already registered. Please sign in instead.");
-      } else {
-        toast.error(signUpError.message || "Registration failed. Please try again.");
-      }
-      setLoading(false);
-      return;
-    }
-
-    if (!authData.user) {
-      console.error("No user data returned from sign up");
-      toast.error("Failed to create user account");
-      setLoading(false);
-      return;
-    }
-
-    console.log("User created successfully:", authData.user.id);
-
-    // Send welcome email
-    try {
-      await supabase.functions.invoke("send-welcome-email", {
-        body: {
-          email: email.trim(),
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-        },
-      });
-    } catch (emailError) {
-      console.error("Welcome email failed:", emailError);
-      // Don't block registration if email fails
-    }
-
-    let cvUrl = null;
-
-    // Upload CV if provided
-    if (cvFile) {
-      try {
-        const cvFileName = `${authData.user.id}/cv_${Date.now()}.pdf`;
-        const { error: cvUploadError } = await supabase.storage
-          .from("employee-cvs")
-          .upload(cvFileName, cvFile);
-
-        if (cvUploadError) {
-          console.error("CV upload error:", cvUploadError);
-          toast.error("Failed to upload CV: " + cvUploadError.message);
-          setLoading(false);
-          return;
-        }
-
-        cvUrl = cvFileName;
-        console.log("CV uploaded successfully:", cvFileName);
-      } catch (error) {
-        console.error("CV upload exception:", error);
-        toast.error("An error occurred while uploading CV");
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Generate employee code automatically
-    const employeeCode = `EMP${Date.now().toString().slice(-6)}`;
-    
-    // Create employee record
-    try {
-      console.log("Creating employee record...", { user_id: authData.user.id, email: email.trim() });
-      const { data: employeeData, error: employeeError } = await supabase
-        .from('employees')
-        .insert({
-          user_id: authData.user.id,
-          employee_code: employeeCode,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          cv_url: cvUrl,
-          hire_date: new Date().toISOString().split('T')[0],
-          status: 'active',
-          registration_status: 'pending',
-        })
-        .select();
-
-      if (employeeError) {
-        console.error("Employee creation error:", employeeError);
-        toast.error("Failed to create employee record: " + employeeError.message);
-        setLoading(false);
-        return;
-      }
-
-      console.log("Employee record created successfully:", employeeData);
-    } catch (error) {
-      console.error("Employee creation exception:", error);
-      toast.error("An error occurred while creating your employee record");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Registration submitted! Please wait for admin approval.");
-    setLoading(false);
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,121 +97,41 @@ const Auth = () => {
           <CardDescription>Professional Accounting Management System</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-signin">Email</Label>
-                  <Input
-                    id="email-signin"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-signin">Password</Label>
-                  <Input
-                    id="password-signin"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName-signup">First Name</Label>
-                    <Input
-                      id="firstName-signup"
-                      type="text"
-                      placeholder="John"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName-signup">Last Name</Label>
-                    <Input
-                      id="lastName-signup"
-                      type="text"
-                      placeholder="Doe"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email-signup">Email</Label>
-                  <Input
-                    id="email-signup"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone-signup">Phone</Label>
-                  <Input
-                    id="phone-signup"
-                    type="tel"
-                    placeholder="+1234567890"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cv">Upload CV (Optional)</Label>
-                  <Input
-                    id="cv"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setCvFile(e.target.files?.[0] || null)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    You can upload your CV now or add it later from your profile
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-signup">Password</Label>
-                  <Input
-                    id="password-signup"
-                    type="password"
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={12}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Minimum 12 characters required
-                  </p>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Register"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-signin">Email</Label>
+              <Input
+                id="email-signin"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password-signin">Password</Label>
+              <Input
+                id="password-signin"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Want to join our team?{" "}
+              <Link to="/careers#apply" className="text-primary hover:underline font-medium">
+                Apply here
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
