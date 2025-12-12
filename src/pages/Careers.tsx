@@ -45,80 +45,15 @@ const COMPANY_NAME = "EDUINT Education Consultancy";
 const openPositions = [
   {
     id: 1,
-    title: "Senior Student Counsellor",
-    department: "Counselling",
-    location: "Dhaka",
-    type: "Full-time",
-    experience: "Mid",
-    highlights: [
-      "Guide 50+ students monthly through admission process",
-      "Build relationships with partner universities",
-      "Lead junior counsellor training sessions",
-    ],
-  },
-  {
-    id: 2,
-    title: "Digital Marketing Specialist",
+    title: "Campus Ambassador",
     department: "Marketing",
     location: "Hybrid",
-    type: "Full-time",
-    experience: "Junior",
-    highlights: [
-      "Create engaging content for social media campaigns",
-      "Manage paid advertising across platforms",
-      "Analyze and optimize campaign performance",
-    ],
-  },
-  {
-    id: 3,
-    title: "Operations Coordinator",
-    department: "Operations",
-    location: "Dhaka",
-    type: "Full-time",
-    experience: "Junior",
-    highlights: [
-      "Streamline visa documentation processes",
-      "Coordinate with universities and embassies",
-      "Support student journey from enrollment to departure",
-    ],
-  },
-  {
-    id: 4,
-    title: "HR & Talent Acquisition Executive",
-    department: "HR",
-    location: "Dhaka",
-    type: "Full-time",
-    experience: "Mid",
-    highlights: [
-      "Lead end-to-end recruitment for growing team",
-      "Design employee engagement initiatives",
-      "Build employer brand and talent pipeline",
-    ],
-  },
-  {
-    id: 5,
-    title: "Graduate Trainee - Counselling",
-    department: "Counselling",
-    location: "Dhaka",
-    type: "Internship",
+    type: "Part-time",
     experience: "Intern",
     highlights: [
-      "3-month structured training program",
-      "Shadow senior counsellors on real cases",
-      "Path to full-time role upon completion",
-    ],
-  },
-  {
-    id: 6,
-    title: "Content & Video Creator",
-    department: "Marketing",
-    location: "Remote",
-    type: "Full-time",
-    experience: "Junior",
-    highlights: [
-      "Produce educational videos for students",
-      "Write blog posts and success stories",
-      "Create visual content for campaigns",
+      "Generate leads from your campus and network",
+      "Promote EDUINT brand among students",
+      "Engage students through events and outreach",
     ],
   },
 ];
@@ -328,9 +263,14 @@ export default function Careers() {
                 Apply
               </button>
             </div>
-            <Button onClick={() => scrollToSection("positions")}>
-              View Open Roles
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={() => scrollToSection("positions")}>
+                View Open Roles
+              </Button>
+              <Button variant="outline" onClick={() => window.location.href = "/auth"}>
+                Sign In
+              </Button>
+            </div>
           </div>
         </nav>
 
@@ -708,30 +648,14 @@ export default function Careers() {
                             <SelectValue placeholder="Select a role" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="counsellor">Student Counsellor</SelectItem>
-                            <SelectItem value="consultant">Education Consultant</SelectItem>
-                            <SelectItem value="marketing">Digital Marketing</SelectItem>
-                            <SelectItem value="content">Content Creator</SelectItem>
-                            <SelectItem value="operations">Operations</SelectItem>
-                            <SelectItem value="hr">HR & Recruitment</SelectItem>
-                            <SelectItem value="intern">Internship</SelectItem>
+                            <SelectItem value="campus-ambassador">Campus Ambassador</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="experience">Experience Level *</Label>
-                        <Select name="experience" required>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select level" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="intern">Intern / Fresh Graduate</SelectItem>
-                            <SelectItem value="junior">Junior (1-2 years)</SelectItem>
-                            <SelectItem value="mid">Mid-Level (3-5 years)</SelectItem>
-                            <SelectItem value="senior">Senior (5+ years)</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="dob">Date of Birth *</Label>
+                        <Input id="dob" name="dob" type="date" required />
                       </div>
                     </div>
 
