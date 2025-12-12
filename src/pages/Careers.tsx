@@ -347,7 +347,7 @@ export default function Careers() {
                 Build Your Career Shaping Global Education Journeys
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-                Join a fast-growing education consultancy helping students study in Korea, Japan, Australia, and New Zealand while driving financial literacy worldwide.
+                Join a fast-growing education consultancy poised to help student identify their passion for their career and study in Australia, Canada, New Zealand, South Korea, UK, USA & in Europe.
               </p>
               <p className="text-base text-muted-foreground mb-10 max-w-xl mx-auto">
                 Make a real impact on students, families, and schools while building an exceptional career with continuous learning and growth opportunities.
