@@ -820,6 +820,58 @@ export default function Employees() {
                                 </Button>
                               </div>
                             )}
+                            {app.status === 'approved' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    // Check if employee already exists with this email
+                                    const { data: existingEmp } = await supabase
+                                      .from('employees')
+                                      .select('id')
+                                      .eq('email', app.email)
+                                      .maybeSingle();
+                                    
+                                    if (existingEmp) {
+                                      toast.info('Employee record already exists for this email.');
+                                      return;
+                                    }
+                                    
+                                    // Parse applicant name
+                                    const nameParts = app.full_name.trim().split(' ');
+                                    const firstName = nameParts[0] || app.full_name;
+                                    const lastName = nameParts.slice(1).join(' ') || '';
+                                    
+                                    // Create employee account
+                                    const { error: empError } = await supabase.functions.invoke("create-employee-account", {
+                                      body: {
+                                        email: app.email,
+                                        first_name: firstName,
+                                        last_name: lastName,
+                                        phone: app.phone || '',
+                                        date_of_birth: app.date_of_birth,
+                                        cv_url: app.cv_url,
+                                        hire_date: new Date().toISOString().split('T')[0],
+                                      },
+                                    });
+                                    
+                                    if (empError) {
+                                      toast.error("Failed to create employee: " + empError.message);
+                                    } else {
+                                      toast.success('Employee account created! Check the Pending tab.');
+                                      queryClient.invalidateQueries({ queryKey: ['pending-registrations'] });
+                                      queryClient.invalidateQueries({ queryKey: ['employees'] });
+                                    }
+                                  } catch (err: any) {
+                                    toast.error("Error: " + err.message);
+                                  }
+                                }}
+                              >
+                                <UserPlus className="h-4 w-4 mr-1" />
+                                Convert to Employee
+                              </Button>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
