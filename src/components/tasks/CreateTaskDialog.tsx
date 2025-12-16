@@ -86,6 +86,32 @@ export function CreateTaskDialog({
 
   const createMutation = useMutation({
     mutationFn: async (values: z.infer<typeof taskFormSchema>) => {
+      // Resolve current employee id reliably (don't depend on page-level session queries)
+      const resolvedEmployeeId = await (async () => {
+        if (currentEmployeeId) return currentEmployeeId;
+
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!userData.user) {
+          throw new Error("You are not signed in. Please sign out and sign in again.");
+        }
+
+        const { data: empData, error: empError } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("user_id", userData.user.id)
+          .single();
+
+        if (empError) throw empError;
+        if (!empData?.id) {
+          throw new Error(
+            "Your account is not linked to an employee record yet. Please contact an admin."
+          );
+        }
+
+        return empData.id;
+      })();
+
       // Insert the task
       const { data: taskData, error: taskError } = await supabase
         .from("tasks")
@@ -94,7 +120,7 @@ export function CreateTaskDialog({
           description: values.description || null,
           priority: values.priority,
           assigned_to: values.assignedTo.length === 1 ? values.assignedTo[0] : null,
-          assigned_by: currentEmployeeId || null,
+          assigned_by: resolvedEmployeeId,
           due_date: values.dueDate || null,
           status: "pending",
           is_recurring: values.isRecurring,
@@ -106,7 +132,7 @@ export function CreateTaskDialog({
 
       if (taskError) throw taskError;
 
-      // If multiple assignees, insert into task_assignments
+      // Insert into task_assignments (supports multi-assignee; keep for single too)
       if (values.assignedTo.length > 0 && taskData) {
         const assignments = values.assignedTo.map((empId) => ({
           task_id: taskData.id,
@@ -121,10 +147,10 @@ export function CreateTaskDialog({
       }
 
       // Upload attachments if any
-      if (attachments.length > 0 && taskData && currentEmployeeId) {
+      if (attachments.length > 0 && taskData) {
         for (const file of attachments) {
           const filePath = `${taskData.id}/${Date.now()}-${file.name}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from("task-attachments")
             .upload(filePath, file);
@@ -135,15 +161,13 @@ export function CreateTaskDialog({
           }
 
           // Save attachment metadata
-          const { error: metaError } = await supabase
-            .from("task_attachments")
-            .insert({
-              task_id: taskData.id,
-              employee_id: currentEmployeeId,
-              file_name: file.name,
-              file_path: filePath,
-              file_size: file.size,
-            });
+          const { error: metaError } = await supabase.from("task_attachments").insert({
+            task_id: taskData.id,
+            employee_id: resolvedEmployeeId,
+            file_name: file.name,
+            file_path: filePath,
+            file_size: file.size,
+          });
 
           if (metaError) console.error("Metadata error:", metaError);
         }
