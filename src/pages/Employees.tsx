@@ -745,13 +745,15 @@ export default function Employees() {
                                       // Create employee account (pending registration)
                                       const { data: empData, error: empError } = await supabase.functions.invoke("create-employee-account", {
                                         body: {
-                                          email: app.email,
-                                          first_name: firstName,
-                                          last_name: lastName,
-                                          phone: app.phone || '',
-                                          date_of_birth: app.date_of_birth,
-                                          cv_url: app.cv_url,
-                                          hire_date: new Date().toISOString().split('T')[0],
+                                          employeeData: {
+                                            email: app.email,
+                                            first_name: firstName,
+                                            last_name: lastName,
+                                            phone: app.phone || '',
+                                            date_of_birth: app.date_of_birth,
+                                            cv_url: app.cv_url,
+                                            hire_date: new Date().toISOString().split('T')[0],
+                                          },
                                         },
                                       });
                                       
@@ -846,13 +848,15 @@ export default function Employees() {
                                     // Create employee account
                                     const { error: empError } = await supabase.functions.invoke("create-employee-account", {
                                       body: {
-                                        email: app.email,
-                                        first_name: firstName,
-                                        last_name: lastName,
-                                        phone: app.phone || '',
-                                        date_of_birth: app.date_of_birth,
-                                        cv_url: app.cv_url,
-                                        hire_date: new Date().toISOString().split('T')[0],
+                                        employeeData: {
+                                          email: app.email,
+                                          first_name: firstName,
+                                          last_name: lastName,
+                                          phone: app.phone || '',
+                                          date_of_birth: app.date_of_birth,
+                                          cv_url: app.cv_url,
+                                          hire_date: new Date().toISOString().split('T')[0],
+                                        },
                                       },
                                     });
                                     
