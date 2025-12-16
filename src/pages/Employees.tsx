@@ -734,8 +734,27 @@ export default function Employees() {
                                       .from('job_applications')
                                       .update({ status: 'approved', reviewed_at: new Date().toISOString() })
                                       .eq('id', app.id);
+                                    
+                                    // Send approval notification email
+                                    const nameParts = app.full_name.split(' ');
+                                    const firstName = nameParts[0] || app.full_name;
+                                    const lastName = nameParts.slice(1).join(' ') || '';
+                                    
+                                    await supabase.functions.invoke("send-approval-email", {
+                                      body: {
+                                        email: app.email,
+                                        firstName,
+                                        lastName,
+                                        status: "approved",
+                                        position: app.role_applied || "Campus Ambassador",
+                                        department: "Recruitment",
+                                        companyEmail: "",
+                                        joiningDate: new Date().toISOString(),
+                                      },
+                                    });
+                                    
                                     queryClient.invalidateQueries({ queryKey: ['job-applications'] });
-                                    toast.success('Application approved');
+                                    toast.success('Application approved and notification sent');
                                   }}
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
@@ -749,8 +768,24 @@ export default function Employees() {
                                       .from('job_applications')
                                       .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
                                       .eq('id', app.id);
+                                    
+                                    // Send rejection notification email
+                                    const nameParts = app.full_name.split(' ');
+                                    const firstName = nameParts[0] || app.full_name;
+                                    const lastName = nameParts.slice(1).join(' ') || '';
+                                    
+                                    await supabase.functions.invoke("send-approval-email", {
+                                      body: {
+                                        email: app.email,
+                                        firstName,
+                                        lastName,
+                                        status: "rejected",
+                                        rejectionReason: "Thank you for your interest. Unfortunately, we are not able to proceed with your application at this time.",
+                                      },
+                                    });
+                                    
                                     queryClient.invalidateQueries({ queryKey: ['job-applications'] });
-                                    toast.success('Application rejected');
+                                    toast.success('Application rejected and notification sent');
                                   }}
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
