@@ -2,6 +2,40 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Send email with retry logic for rate limiting
+async function sendEmailWithRetry(emailPayload: object, maxRetries = 3): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify(emailPayload),
+    });
+
+    if (res.ok) {
+      return res;
+    }
+
+    // If rate limited, wait and retry
+    if (res.status === 429 && attempt < maxRetries - 1) {
+      const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
+      console.log(`Rate limited, waiting ${waitTime}ms before retry ${attempt + 2}/${maxRetries}`);
+      await delay(waitTime);
+      continue;
+    }
+
+    // Return the error response if not rate limited or max retries reached
+    return res;
+  }
+  
+  throw new Error("Max retries exceeded");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -120,24 +154,18 @@ serve(async (req) => {
           </html>
         `;
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "EDUINTBD <hr@eduintbd.ai>",
-        to: [email],
-        subject: isApproved 
-          ? "Welcome to EDUINTBD - Your Application is Approved!" 
-          : "EDUINTBD Application Status Update",
-        html: emailContent,
-      }),
+    const res = await sendEmailWithRetry({
+      from: "EDUINTBD <hr@eduintbd.ai>",
+      to: [email],
+      subject: isApproved 
+        ? "Welcome to EDUINTBD - Your Application is Approved!" 
+        : "EDUINTBD Application Status Update",
+      html: emailContent,
     });
 
     if (!res.ok) {
       const error = await res.text();
+      console.error("Resend API error:", error);
       throw new Error(error);
     }
 
