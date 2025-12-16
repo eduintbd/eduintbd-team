@@ -26,6 +26,8 @@ export default function Tasks() {
     },
   });
 
+  const isSignedIn = !!session?.user?.id;
+
   const { data: userRoles } = useQuery({
     queryKey: ["user-roles", session?.user?.id],
     queryFn: async () => {
@@ -163,7 +165,17 @@ export default function Tasks() {
           <h1 className="text-2xl md:text-3xl font-bold">Task Management</h1>
           <p className="text-sm md:text-base text-muted-foreground">Manage and track all tasks</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
+        <Button
+          onClick={() => {
+            if (!isSignedIn) {
+              toast.error("Your session has expired. Please sign in again.");
+              return;
+            }
+            setCreateDialogOpen(true);
+          }}
+          disabled={!isSignedIn}
+          className="w-full sm:w-auto"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Task
         </Button>
@@ -225,12 +237,14 @@ export default function Tasks() {
             <span className="hidden sm:inline">Kanban Board</span>
             <span className="sm:hidden">Kanban</span>
           </TabsTrigger>
+          
           <TabsTrigger value="list" className="flex-1 sm:flex-none">
             <ListTodo className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">List View</span>
             <span className="sm:hidden">List</span>
           </TabsTrigger>
         </TabsList>
+
         <TabsContent value="kanban" className="space-y-4">
           <TaskKanbanBoard
             tasks={tasks || []}
@@ -238,14 +252,15 @@ export default function Tasks() {
               updateTaskStatusMutation.mutate({ taskId, newStatus })
             }
             isAdmin={isAdmin}
-            currentEmployeeId={currentEmployee?.id}
+            currentEmployeeId={isSignedIn ? currentEmployee?.id : undefined}
           />
         </TabsContent>
+
         <TabsContent value="list" className="space-y-4">
-          <TaskListView
+          <TaskListView
             tasks={tasks || []}
             isAdmin={isAdmin}
-            currentEmployeeId={currentEmployee?.id}
+            currentEmployeeId={isSignedIn ? currentEmployee?.id : undefined}
           />
         </TabsContent>
       </Tabs>
@@ -254,7 +269,7 @@ export default function Tasks() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         employees={employees || []}
-        currentEmployeeId={currentEmployee?.id}
+        currentEmployeeId={isSignedIn ? currentEmployee?.id : undefined}
       />
     </div>
   );

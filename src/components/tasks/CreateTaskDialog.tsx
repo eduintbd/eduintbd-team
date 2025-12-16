@@ -86,31 +86,27 @@ export function CreateTaskDialog({
 
   const createMutation = useMutation({
     mutationFn: async (values: z.infer<typeof taskFormSchema>) => {
-      // Resolve current employee id reliably (don't depend on page-level session queries)
-      const resolvedEmployeeId = await (async () => {
-        if (currentEmployeeId) return currentEmployeeId;
+      // Resolve current employee id reliably (avoid stale cached IDs when session changes)
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!userData.user) {
+        throw new Error("You are not signed in. Please sign out and sign in again.");
+      }
 
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!userData.user) {
-          throw new Error("You are not signed in. Please sign out and sign in again.");
-        }
+      const { data: empData, error: empError } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .single();
 
-        const { data: empData, error: empError } = await supabase
-          .from("employees")
-          .select("id")
-          .eq("user_id", userData.user.id)
-          .single();
+      if (empError) throw empError;
+      if (!empData?.id) {
+        throw new Error(
+          "Your account is not linked to an employee record yet. Please contact an admin."
+        );
+      }
 
-        if (empError) throw empError;
-        if (!empData?.id) {
-          throw new Error(
-            "Your account is not linked to an employee record yet. Please contact an admin."
-          );
-        }
-
-        return empData.id;
-      })();
+      const resolvedEmployeeId = empData.id;
 
       // Insert the task
       const { data: taskData, error: taskError } = await supabase
