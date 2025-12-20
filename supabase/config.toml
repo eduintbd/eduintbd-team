@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.send-approval-email]
 verify_jwt = false
+
+[functions.smart-biz-cards-api]
+verify_jwt = false
