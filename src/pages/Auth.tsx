@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +9,32 @@ import { toast } from "sonner";
 import { Building2 } from "lucide-react";
 import { z } from "zod";
 
-const authSchema = z.object({
+const signInSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
   password: z.string().min(12, "Password must be at least 12 characters").max(128, "Password too long"),
 });
 
+const signUpSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(100, "First name too long"),
+  lastName: z.string().trim().min(1, "Last name is required").max(100, "Last name too long"),
+  email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
+  phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(20, "Phone number too long"),
+  password: z.string().min(12, "Password must be at least 12 characters").max(128, "Password too long"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 const Auth = () => {
   const navigate = useNavigate();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,8 +48,7 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate input
-    const validation = authSchema.safeParse({ email: email.trim(), password });
+    const validation = signInSchema.safeParse({ email: email.trim(), password });
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
       return;
@@ -56,7 +72,6 @@ const Auth = () => {
       return;
     }
 
-    // Check registration status
     if (data.user) {
       const { data: employeeData } = await supabase
         .from("employees")
@@ -84,6 +99,66 @@ const Auth = () => {
     setLoading(false);
   };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const validation = signUpSchema.safeParse({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      password,
+      confirmPassword,
+    });
+    
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
+      return;
+    }
+    
+    setLoading(true);
+
+    try {
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        "create-employee-account",
+        {
+          body: {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password,
+          },
+        }
+      );
+
+      if (functionError) {
+        throw new Error(functionError.message || "Failed to create account");
+      }
+
+      if (functionData?.error) {
+        throw new Error(functionData.error);
+      }
+
+      toast.success("Account created successfully! Your registration is pending admin approval.");
+      setIsSignUp(false);
+      setFirstName("");
+      setLastName("");
+      setPhone("");
+      setPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Sign up error:", error);
+      if (error.message.includes("already exists") || error.message.includes("already registered")) {
+        toast.error("An account with this email already exists. Please sign in instead.");
+      } else {
+        toast.error(error.message || "Sign up failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -97,39 +172,134 @@ const Auth = () => {
           <CardDescription>Professional Accounting Management System</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email-signin">Email</Label>
-              <Input
-                id="email-signin"
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password-signin">Password</Label>
-              <Input
-                id="password-signin"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
+          {isSignUp ? (
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="first-name">First Name</Label>
+                  <Input
+                    id="first-name"
+                    type="text"
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="last-name">Last Name</Label>
+                  <Input
+                    id="last-name"
+                    type="text"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email-signup">Email</Label>
+                <Input
+                  id="email-signup"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+880 1XXX-XXXXXX"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password-signup">Password</Label>
+                <Input
+                  id="password-signup"
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Creating Account..." : "Sign Up"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSignIn} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email-signin">Email</Label>
+                <Input
+                  id="email-signin"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password-signin">Password</Label>
+                <Input
+                  id="password-signin"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
+          )}
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Want to join our team?{" "}
-              <Link to="/careers#apply" className="text-primary hover:underline font-medium">
-                Apply here
-              </Link>
+              {isSignUp ? (
+                <>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(false)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Sign in
+                  </button>
+                </>
+              ) : (
+                <>
+                  Want to join our team?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(true)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Sign up
+                  </button>
+                </>
+              )}
             </p>
           </div>
         </CardContent>
