@@ -87,8 +87,20 @@ export function CreateTaskDialog({
   const createMutation = useMutation({
     mutationFn: async (values: z.infer<typeof taskFormSchema>) => {
       // Resolve current employee id reliably (avoid stale cached IDs when session changes)
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        throw new Error("Your session has expired. Please sign out and sign in again to continue.");
+      }
+
       const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
+      if (userError) {
+        // Session might be stale - prompt re-login
+        if (userError.message?.includes("Refresh Token") || userError.status === 400) {
+          throw new Error("Your session has expired. Please sign out and sign in again.");
+        }
+        throw userError;
+      }
       if (!userData.user) {
         throw new Error("You are not signed in. Please sign out and sign in again.");
       }
@@ -99,7 +111,12 @@ export function CreateTaskDialog({
         .eq("user_id", userData.user.id)
         .single();
 
-      if (empError) throw empError;
+      if (empError) {
+        if (empError.code === "PGRST116") {
+          throw new Error("Your account is not linked to an employee record yet. Please contact an admin.");
+        }
+        throw empError;
+      }
       if (!empData?.id) {
         throw new Error(
           "Your account is not linked to an employee record yet. Please contact an admin."
