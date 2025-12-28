@@ -1555,6 +1555,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_approved_employee: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       is_finance_department: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
