@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.smart-biz-cards-api]
 verify_jwt = false
+
+[functions.fix-account-link]
+verify_jwt = false

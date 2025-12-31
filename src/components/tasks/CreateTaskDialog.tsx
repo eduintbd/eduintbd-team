@@ -194,7 +194,18 @@ export function CreateTaskDialog({
       onOpenChange(false);
     },
     onError: (error: any) => {
-      toast.error("Failed to create task: " + error.message);
+      const errorMsg = error.message || "Unknown error";
+      
+      // Check for RLS policy violation
+      if (errorMsg.includes("row-level security") || errorMsg.includes("violates row-level security")) {
+        toast.error(
+          "Permission denied: Your account may not be linked to an approved employee record. " +
+          "Please check the Account Status panel on the Tasks page and use 'Fix Account Link' if needed.",
+          { duration: 8000 }
+        );
+      } else {
+        toast.error("Failed to create task: " + errorMsg);
+      }
     },
   });
 

@@ -10,6 +10,7 @@ import { TaskKanbanBoard } from "@/components/tasks/TaskKanbanBoard";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
+import { AccountStatusPanel } from "@/components/tasks/AccountStatusPanel";
 
 export default function Tasks() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -160,6 +161,9 @@ export default function Tasks() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Account Status Panel - shows linking issues */}
+      <AccountStatusPanel />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Task Management</h1>
