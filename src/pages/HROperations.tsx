@@ -4,12 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, Clock, CheckCircle, XCircle, DollarSign, TrendingUp } from "lucide-react";
+import { Plus, Calendar, Clock, CheckCircle, XCircle, DollarSign, TrendingUp, LogIn, LogOut, MapPin } from "lucide-react";
 import { RequestLeaveDialog } from "@/components/RequestLeaveDialog";
+import { AttendanceLocationDialog } from "@/components/AttendanceLocationDialog";
 
 export default function HROperations() {
   const [searchTerm, setSearchTerm] = useState("");
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [clockInDialogOpen, setClockInDialogOpen] = useState(false);
+  const [clockOutDialogOpen, setClockOutDialogOpen] = useState(false);
 
   // Leave queries
   const { data: leaveRequests, isLoading: leaveLoading } = useQuery({
@@ -43,6 +46,33 @@ export default function HROperations() {
         .limit(100);
       
       if (error) throw error;
+      return data;
+    },
+  });
+
+  // Query for current user's attendance today
+  const { data: myTodayAttendance } = useQuery({
+    queryKey: ["my-attendance-today"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: employee } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!employee) return null;
+
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase
+        .from("attendance_records")
+        .select("*")
+        .eq("employee_id", employee.id)
+        .eq("attendance_date", today)
+        .maybeSingle();
+
       return data;
     },
   });
@@ -227,12 +257,63 @@ export default function HROperations() {
 
           {/* ATTENDANCE TAB */}
           <TabsContent value="attendance" className="space-y-4">
+            {/* Clock In/Out Status Card */}
+            <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Today's Attendance</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {myTodayAttendance?.clock_in 
+                        ? `Clocked in at ${new Date(myTodayAttendance.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        : "You haven't clocked in yet"}
+                      {myTodayAttendance?.clock_out && 
+                        ` • Clocked out at ${new Date(myTodayAttendance.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    </p>
+                    {myTodayAttendance?.clock_in_address && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <MapPin className="h-3 w-3" />
+                        {myTodayAttendance.clock_in_address.split(',').slice(0, 2).join(',')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button 
+                      onClick={() => setClockInDialogOpen(true)}
+                      disabled={!!myTodayAttendance?.clock_in}
+                      className="flex-1 sm:flex-none"
+                      variant={myTodayAttendance?.clock_in ? "outline" : "default"}
+                    >
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Clock In
+                    </Button>
+                    <Button 
+                      onClick={() => setClockOutDialogOpen(true)}
+                      disabled={!myTodayAttendance?.clock_in || !!myTodayAttendance?.clock_out}
+                      className="flex-1 sm:flex-none"
+                      variant={myTodayAttendance?.clock_out ? "outline" : "default"}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Clock Out
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <AttendanceLocationDialog 
+              open={clockInDialogOpen} 
+              onOpenChange={setClockInDialogOpen} 
+              type="in" 
+            />
+            <AttendanceLocationDialog 
+              open={clockOutDialogOpen} 
+              onOpenChange={setClockOutDialogOpen} 
+              type="out" 
+            />
+
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
               <h2 className="text-lg md:text-xl font-semibold text-foreground">Attendance Tracking</h2>
-              <Button className="w-full sm:w-auto">
-                <Clock className="mr-2 h-4 w-4" />
-                Clock In/Out
-              </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
