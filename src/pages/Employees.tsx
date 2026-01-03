@@ -226,6 +226,20 @@ export default function Employees() {
 
       if (updateError) throw updateError;
 
+      // Auto-assign 'employee' role to the newly approved employee
+      if (selectedPendingEmployee.user_id) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .upsert(
+            { user_id: selectedPendingEmployee.user_id, role: 'employee' },
+            { onConflict: 'user_id,role' }
+          );
+        
+        if (roleError) {
+          console.error("Failed to assign employee role:", roleError);
+        }
+      }
+
       // Auto-assign tasks from templates marked for auto-assignment
       if (approverEmployee?.id) {
         const { data: autoAssignTemplates } = await supabase
