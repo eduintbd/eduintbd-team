@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Bhai Bhai Store",
+    "slug": "bhai-bhai-store",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "bhai-store",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#16a34a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bhaistore.tracker"
+    },
+    "android": {
+      "package": "com.bhaistore.tracker",
+      "adaptiveIcon": {
+        "backgroundColor": "#16a34a"
+      }
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}

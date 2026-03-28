@@ -1,0 +1,25 @@
+project_id = "iuiyykwfzuhlfdzrcvfm"
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.admin-reset-password]
+verify_jwt = false
+
+[functions.fetch-purelymail]
+verify_jwt = false
+
+[functions.submit-application]
+verify_jwt = false
+
+[functions.send-application-confirmation]
+verify_jwt = false
+
+[functions.send-approval-email]
+verify_jwt = false
+
+[functions.smart-biz-cards-api]
+verify_jwt = false
+
+[functions.fix-account-link]
+verify_jwt = false
