@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Download, User, CheckCircle2, AlertCircle, Edit3 } from "lucide-react";
+import { Loader2, Upload, FileText, Download, User, CheckCircle2, AlertCircle, Edit3, Lock } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { z } from "zod";
@@ -48,6 +48,11 @@ const Profile = () => {
   const [nidFile, setNidFile] = useState<File | null>(null);
   const [tinFile, setTinFile] = useState<File | null>(null);
   const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmNewPassword: "",
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -69,6 +74,29 @@ const Profile = () => {
     nidNumber: "",
     tinNumber: "",
   });
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordData.newPassword.length < 12) {
+      toast.error("New password must be at least 12 characters");
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmNewPassword) {
+      toast.error("Passwords don't match");
+      return;
+    }
+    setChangingPassword(true);
+    const { error } = await supabase.auth.updateUser({
+      password: passwordData.newPassword,
+    });
+    if (error) {
+      toast.error(error.message || "Failed to change password");
+    } else {
+      toast.success("Password changed successfully!");
+      setPasswordData({ newPassword: "", confirmNewPassword: "" });
+    }
+    setChangingPassword(false);
+  };
 
   useEffect(() => {
     fetchEmployeeData();
@@ -1083,6 +1111,55 @@ const Profile = () => {
               <Upload className="mr-2 h-4 w-4" />
               {employeeData?.bank_statement_url ? "Update Document" : "Upload Document"}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Change Password */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>Update your account password</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Min 12 characters"
+                  value={passwordData.newPassword}
+                  onChange={(e) =>
+                    setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
+                  required
+                  minLength={12}
+                  maxLength={128}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                <Input
+                  id="confirm-new-password"
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={passwordData.confirmNewPassword}
+                  onChange={(e) =>
+                    setPasswordData((prev) => ({ ...prev, confirmNewPassword: e.target.value }))
+                  }
+                  required
+                  minLength={12}
+                  maxLength={128}
+                />
+              </div>
+              <Button type="submit" disabled={changingPassword}>
+                {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Change Password
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

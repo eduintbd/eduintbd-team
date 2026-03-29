@@ -24,6 +24,10 @@ import TaskTemplates from "./pages/TaskTemplates";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Careers from "./pages/Careers";
+import PurchaseOrders from "./pages/PurchaseOrders";
+import ProcurementItems from "./pages/ProcurementItems";
+import Vendors from "./pages/Vendors";
+import ProcurementPayments from "./pages/ProcurementPayments";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +58,10 @@ const App = () => (
             <Route path="/task-templates" element={<TaskTemplates />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/procurement/orders" element={<PurchaseOrders />} />
+            <Route path="/procurement/items" element={<ProcurementItems />} />
+            <Route path="/procurement/vendors" element={<Vendors />} />
+            <Route path="/procurement/payments" element={<ProcurementPayments />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

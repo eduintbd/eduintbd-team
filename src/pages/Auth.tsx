@@ -29,6 +29,7 @@ const signUpSchema = z.object({
 const Auth = () => {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -98,6 +99,49 @@ const Auth = () => {
     navigate("/dashboard");
     setLoading(false);
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo: `${window.location.origin}/auth?type=recovery`,
+    });
+    if (error) {
+      toast.error(error.message || "Failed to send reset email");
+    } else {
+      toast.success("Password reset link sent! Check your email.");
+      setIsForgotPassword(false);
+    }
+    setLoading(false);
+  };
+
+  // Handle password recovery from email link
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("type") === "recovery") {
+      supabase.auth.onAuthStateChange(async (event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          const newPassword = prompt("Enter your new password (min 12 characters):");
+          if (newPassword && newPassword.length >= 12) {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) {
+              toast.error(error.message);
+            } else {
+              toast.success("Password updated successfully! You can now sign in.");
+              window.history.replaceState({}, "", "/auth");
+            }
+          } else if (newPassword) {
+            toast.error("Password must be at least 12 characters");
+          }
+        }
+      });
+    }
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,7 +218,36 @@ const Auth = () => {
           <CardDescription>Professional Accounting Management System</CardDescription>
         </CardHeader>
         <CardContent>
-          {isSignUp ? (
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter your email and we'll send you a password reset link.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="email-reset">Email</Label>
+                <Input
+                  id="email-reset"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Sending..." : "Send Reset Link"}
+              </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(false)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            </form>
+          ) : isSignUp ? (
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -275,6 +348,15 @@ const Auth = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(true)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </form>
           )}
           <div className="mt-6 text-center">
@@ -284,13 +366,13 @@ const Auth = () => {
                   Already have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => setIsSignUp(false)}
+                    onClick={() => { setIsSignUp(false); setIsForgotPassword(false); }}
                     className="text-primary hover:underline font-medium"
                   >
                     Sign in
                   </button>
                 </>
-              ) : (
+              ) : !isForgotPassword ? (
                 <>
                   Want to join our team?{" "}
                   <button
@@ -301,7 +383,7 @@ const Auth = () => {
                     Sign up
                   </button>
                 </>
-              )}
+              ) : null}
             </p>
           </div>
         </CardContent>

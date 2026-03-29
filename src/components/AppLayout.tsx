@@ -20,6 +20,10 @@ import {
   Settings,
   Mail,
   ClipboardList,
+  ShoppingCart,
+  Store,
+  Boxes,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,6 +111,11 @@ const AppLayout = () => {
     { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "manager"] },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
     { icon: ClipboardList, label: "Task Templates", path: "/task-templates", section: "HR", roles: ["admin", "manager"] },
+    // Procurement Section
+    { icon: ShoppingCart, label: "Purchase Orders", path: "/procurement/orders", section: "PROCUREMENT" },
+    { icon: Boxes, label: "Items Catalog", path: "/procurement/items", section: "PROCUREMENT" },
+    { icon: Store, label: "Vendors", path: "/procurement/vendors", section: "PROCUREMENT" },
+    { icon: CreditCard, label: "Payments", path: "/procurement/payments", section: "PROCUREMENT" },
     // Accounting Section - for admin and Finance department
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", financeDept: true },
     { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", financeDept: true },
@@ -121,6 +130,10 @@ const AppLayout = () => {
     // Finance department items: admin or Finance dept members
     if (item.financeDept) {
       return userRoles.includes('admin') || isFinanceDept;
+    }
+    // Procurement items: visible to admin, procurement_manager, and all authenticated users
+    if (item.section === "PROCUREMENT") {
+      return true;
     }
     // Role-based items
     if (item.roles) {
@@ -193,6 +206,27 @@ const AppLayout = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredMenuItems.filter(item => item.section === "HR").map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.path)}
+                      isActive={location.pathname === item.path}
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* Procurement Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel>Procurement</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredMenuItems.filter(item => item.section === "PROCUREMENT").map((item) => (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       onClick={() => navigate(item.path)}
