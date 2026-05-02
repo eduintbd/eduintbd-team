@@ -15,7 +15,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, CreditCard, Banknote, Wallet } from "lucide-react";
+import { Plus, CreditCard, Banknote, Wallet, BookOpen } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
@@ -29,8 +30,16 @@ interface Payment {
   reference_number: string | null;
   notes: string | null;
   created_at: string;
+  journal_entry_id: string | null;
+  expense_account_id: string | null;
   purchase_order?: { po_number: string } | null;
   vendor?: { name: string } | null;
+}
+
+interface ExpenseAccount {
+  id: string;
+  account_code: string;
+  account_name: string;
 }
 
 interface PO {
@@ -59,7 +68,10 @@ const ProcurementPayments = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [pendingPOs, setPendingPOs] = useState<PO[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [expenseAccounts, setExpenseAccounts] = useState<ExpenseAccount[]>([]);
   const [open, setOpen] = useState(false);
+  const [createJournalEntry, setCreateJournalEntry] = useState(false);
+  const [expenseAccountId, setExpenseAccountId] = useState("");
   const [formData, setFormData] = useState({
     purchase_order_id: "",
     vendor_id: "",
@@ -74,6 +86,7 @@ const ProcurementPayments = () => {
     fetchPayments();
     fetchPendingPOs();
     fetchVendors();
+    fetchExpenseAccounts();
   }, []);
 
   const fetchPayments = async () => {
@@ -100,6 +113,16 @@ const ProcurementPayments = () => {
     setVendors(data || []);
   };
 
+  const fetchExpenseAccounts = async () => {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code, account_name")
+      .eq("is_active", true)
+      .in("account_type", ["expense", "liability"])
+      .order("account_code");
+    setExpenseAccounts(data || []);
+  };
+
   const handlePOChange = (poId: string) => {
     const po = pendingPOs.find(p => p.id === poId);
     setFormData({
@@ -114,7 +137,7 @@ const ProcurementPayments = () => {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("procurement_payments").insert([{
+    const { data: paymentData, error } = await supabase.from("procurement_payments").insert([{
       purchase_order_id: formData.purchase_order_id || null,
       vendor_id: formData.vendor_id || null,
       date: formData.date,
@@ -123,19 +146,37 @@ const ProcurementPayments = () => {
       reference_number: formData.reference_number || null,
       notes: formData.notes || null,
       recorded_by: user?.id,
-    }]);
+    }]).select().single();
 
-    if (error) toast.error("Error recording payment");
-    else {
-      toast.success("Payment recorded");
-      setOpen(false);
-      setFormData({
-        purchase_order_id: "", vendor_id: "", date: format(new Date(), "yyyy-MM-dd"),
-        amount: "", payment_method: "cash", reference_number: "", notes: "",
-      });
-      fetchPayments();
-      fetchPendingPOs();
+    if (error) {
+      toast.error("Error recording payment");
+      return;
     }
+
+    // Auto-create journal entry if requested
+    if (createJournalEntry && expenseAccountId && paymentData) {
+      const { error: jeError } = await supabase.rpc("create_procurement_journal_entry", {
+        p_payment_id: paymentData.id,
+        p_expense_account_id: expenseAccountId,
+      });
+      if (jeError) {
+        toast.error("Payment recorded but journal entry failed: " + jeError.message);
+      } else {
+        toast.success("Payment recorded with journal entry");
+      }
+    } else {
+      toast.success("Payment recorded");
+    }
+
+    setOpen(false);
+    setFormData({
+      purchase_order_id: "", vendor_id: "", date: format(new Date(), "yyyy-MM-dd"),
+      amount: "", payment_method: "cash", reference_number: "", notes: "",
+    });
+    setCreateJournalEntry(false);
+    setExpenseAccountId("");
+    fetchPayments();
+    fetchPendingPOs();
   };
 
   const formatCurrency = (amount: number) => {
@@ -219,7 +260,31 @@ const ProcurementPayments = () => {
                 <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
               </div>
 
-              <Button type="submit" className="w-full">Record Payment</Button>
+              {/* Fund Transfer / Journal Entry */}
+              <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="createJE" checked={createJournalEntry} onCheckedChange={(checked) => setCreateJournalEntry(checked === true)} />
+                  <Label htmlFor="createJE" className="text-sm font-medium flex items-center gap-1">
+                    <BookOpen className="h-4 w-4" /> Auto-create journal entry (fund transfer)
+                  </Label>
+                </div>
+                {createJournalEntry && (
+                  <div className="space-y-2">
+                    <Label>Expense Account (Debit) *</Label>
+                    <Select value={expenseAccountId} onValueChange={setExpenseAccountId}>
+                      <SelectTrigger><SelectValue placeholder="Select account to debit" /></SelectTrigger>
+                      <SelectContent>
+                        {expenseAccounts.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.account_code} - {a.account_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Cash & Bank (1000) will be credited automatically</p>
+                  </div>
+                )}
+              </div>
+
+              <Button type="submit" className="w-full" disabled={createJournalEntry && !expenseAccountId}>Record Payment</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -279,6 +344,7 @@ const ProcurementPayments = () => {
                 <TableHead>Method</TableHead>
                 <TableHead>Reference</TableHead>
                 <TableHead>Notes</TableHead>
+                <TableHead>J/E</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -293,10 +359,17 @@ const ProcurementPayments = () => {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{payment.reference_number || "-"}</TableCell>
                   <TableCell className="text-muted-foreground max-w-[200px] truncate">{payment.notes || "-"}</TableCell>
+                  <TableCell>
+                    {payment.journal_entry_id ? (
+                      <Badge variant="default" className="text-xs"><BookOpen className="h-3 w-3 mr-1" />Linked</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">No J/E</Badge>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {payments.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No payments recorded</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No payments recorded</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

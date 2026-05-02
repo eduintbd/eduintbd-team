@@ -79,14 +79,21 @@ export function AttendanceLocationDialog({
         setIsGettingLocation(false);
       },
       (error) => {
-        setLocationError(
-          error.code === error.PERMISSION_DENIED
-            ? "Location access denied. Please enable location permissions."
-            : "Unable to get your location. Please try again."
-        );
+        let msg = "Unable to get your location. Please try again.";
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = "Location access denied. Please enable location permissions in your browser settings.";
+        } else if (error.code === error.TIMEOUT) {
+          msg = "Location request timed out. Please check your GPS/location settings and try again.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          msg = "Location unavailable. Ensure GPS is enabled on your device.";
+        }
+        if (window.location.protocol === "http:" && window.location.hostname !== "localhost") {
+          msg += " Note: Location requires HTTPS. Please use the https:// URL.";
+        }
+        setLocationError(msg);
         setIsGettingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 

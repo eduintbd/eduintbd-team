@@ -15,7 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Eye, Trash2, ShoppingCart, FileCheck, Clock, XCircle, CheckCircle2, Package } from "lucide-react";
+import { Plus, Eye, Trash2, ShoppingCart, FileCheck, Clock, XCircle, CheckCircle2, Package, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
@@ -59,14 +59,25 @@ interface PurchaseOrder {
   created_at: string;
   vendor?: { name: string } | null;
   category?: { name: string } | null;
+  pre_approved_by: string | null;
+  pre_approved_at: string | null;
+  pre_approval_notes: string | null;
+  voucher_number: string | null;
+  voucher_date: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  voucher_notes: string | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
   draft: { label: "Draft", variant: "secondary", icon: Clock },
+  pending_pre_approval: { label: "Pending Pre-Approval", variant: "outline", icon: Clock },
+  pre_approved: { label: "Pre-Approved", variant: "default", icon: ShieldCheck },
   pending_approval: { label: "Pending Approval", variant: "outline", icon: Clock },
   approved: { label: "Approved", variant: "default", icon: CheckCircle2 },
   rejected: { label: "Rejected", variant: "destructive", icon: XCircle },
   ordered: { label: "Ordered", variant: "default", icon: ShoppingCart },
+  pending_verification: { label: "Pending Verification", variant: "outline", icon: Package },
   received: { label: "Received", variant: "default", icon: FileCheck },
   cancelled: { label: "Cancelled", variant: "secondary", icon: XCircle },
 };
@@ -82,6 +93,11 @@ const PurchaseOrders = () => {
   const [orderItems, setOrderItems] = useState<POItem[]>([]);
   const [detailItems, setDetailItems] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [voucherNumber, setVoucherNumber] = useState("");
+  const [voucherDate, setVoucherDate] = useState("");
+  const [voucherNotes, setVoucherNotes] = useState("");
   const [formData, setFormData] = useState({
     date: format(new Date(), "yyyy-MM-dd"),
     vendor_id: "",
@@ -94,7 +110,19 @@ const PurchaseOrders = () => {
     fetchVendors();
     fetchCategories();
     fetchProcurementItems();
+    fetchUserRoles();
   }, []);
+
+  const fetchUserRoles = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setCurrentUserId(user.id);
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+    setUserRoles(rolesData?.map(r => r.role) || []);
+  };
 
   const fetchOrders = async () => {
     const { data, error } = await supabase
@@ -224,6 +252,45 @@ const PurchaseOrders = () => {
     }
   };
 
+  const handlePreApprove = async (orderId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("purchase_orders").update({
+      status: "pre_approved" as any,
+      pre_approved_by: user?.id,
+      pre_approved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", orderId);
+    if (error) toast.error("Error pre-approving order");
+    else {
+      toast.success("Purchase order pre-approved");
+      fetchOrders();
+      setDetailOpen(false);
+    }
+  };
+
+  const handleVerifyAndReceive = async (orderId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("purchase_orders").update({
+      status: "received" as any,
+      voucher_number: voucherNumber,
+      voucher_date: voucherDate,
+      verified_by: user?.id,
+      verified_at: new Date().toISOString(),
+      voucher_notes: voucherNotes || null,
+      received_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", orderId);
+    if (error) toast.error("Error verifying delivery");
+    else {
+      toast.success("Delivery verified and PO marked as received");
+      setVoucherNumber("");
+      setVoucherDate("");
+      setVoucherNotes("");
+      fetchOrders();
+      setDetailOpen(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT" }).format(amount || 0);
   };
@@ -232,7 +299,7 @@ const PurchaseOrders = () => {
 
   const stats = {
     total: orders.length,
-    pending: orders.filter(o => o.status === "pending_approval").length,
+    pending: orders.filter(o => ["pending_pre_approval", "pending_approval", "pending_verification"].includes(o.status)).length,
     totalValue: orders.filter(o => !["cancelled", "rejected"].includes(o.status)).reduce((s, o) => s + o.total_amount, 0),
     unpaid: orders.filter(o => o.payment_status !== "paid" && !["cancelled", "rejected"].includes(o.status)).reduce((s, o) => s + o.credit_amount, 0),
   };
@@ -474,25 +541,91 @@ const PurchaseOrders = () => {
                 </TableBody>
               </Table>
 
+              {/* Pre-approval & Verification Info */}
+              {selectedOrder.pre_approved_at && (
+                <div className="text-sm border-t pt-3">
+                  <p className="font-semibold">Pre-Approval</p>
+                  <p className="text-muted-foreground">Pre-approved on {format(new Date(selectedOrder.pre_approved_at), "MMM dd, yyyy HH:mm")}</p>
+                </div>
+              )}
+              {selectedOrder.voucher_number && (
+                <div className="text-sm border-t pt-3">
+                  <p className="font-semibold">Delivery Verification</p>
+                  <p>Voucher: {selectedOrder.voucher_number} ({selectedOrder.voucher_date})</p>
+                  {selectedOrder.voucher_notes && <p className="text-muted-foreground">{selectedOrder.voucher_notes}</p>}
+                  {selectedOrder.verified_at && <p className="text-muted-foreground">Verified on {format(new Date(selectedOrder.verified_at), "MMM dd, yyyy HH:mm")}</p>}
+                </div>
+              )}
+
               {/* Status Actions */}
-              <div className="flex gap-2 flex-wrap">
-                {selectedOrder.status === "draft" && (
-                  <Button onClick={() => updateStatus(selectedOrder.id, "pending_approval")}>Submit for Approval</Button>
-                )}
-                {selectedOrder.status === "pending_approval" && (
-                  <>
-                    <Button onClick={() => updateStatus(selectedOrder.id, "approved")}>Approve</Button>
-                    <Button variant="destructive" onClick={() => updateStatus(selectedOrder.id, "rejected")}>Reject</Button>
-                  </>
-                )}
-                {selectedOrder.status === "approved" && (
-                  <Button onClick={() => updateStatus(selectedOrder.id, "ordered")}>Mark as Ordered</Button>
-                )}
-                {selectedOrder.status === "ordered" && (
-                  <Button onClick={() => updateStatus(selectedOrder.id, "received")}>Mark as Received</Button>
-                )}
-                {!["cancelled", "rejected", "received"].includes(selectedOrder.status) && (
-                  <Button variant="outline" onClick={() => updateStatus(selectedOrder.id, "cancelled")}>Cancel</Button>
+              <div className="space-y-3">
+                <div className="flex gap-2 flex-wrap">
+                  {selectedOrder.status === "draft" && (
+                    <Button onClick={() => updateStatus(selectedOrder.id, "pending_pre_approval")}>Submit for Pre-Approval</Button>
+                  )}
+                  {selectedOrder.status === "pending_pre_approval" && (
+                    userRoles.some(r => ["manager", "admin"].includes(r)) ? (
+                      <>
+                        <Button onClick={() => handlePreApprove(selectedOrder.id)}>
+                          <ShieldCheck className="h-4 w-4 mr-2" />Pre-Approve
+                        </Button>
+                        <Button variant="destructive" onClick={() => updateStatus(selectedOrder.id, "rejected")}>Reject</Button>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Awaiting manager pre-approval</p>
+                    )
+                  )}
+                  {selectedOrder.status === "pre_approved" && (
+                    <Button onClick={() => updateStatus(selectedOrder.id, "pending_approval")}>Submit for Final Approval</Button>
+                  )}
+                  {selectedOrder.status === "pending_approval" && (
+                    userRoles.includes("admin") ? (
+                      <>
+                        <Button onClick={() => updateStatus(selectedOrder.id, "approved")}>Approve</Button>
+                        <Button variant="destructive" onClick={() => updateStatus(selectedOrder.id, "rejected")}>Reject</Button>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Awaiting admin approval</p>
+                    )
+                  )}
+                  {selectedOrder.status === "approved" && (
+                    <Button onClick={() => updateStatus(selectedOrder.id, "ordered")}>Mark as Ordered</Button>
+                  )}
+                  {selectedOrder.status === "ordered" && (
+                    <Button onClick={() => updateStatus(selectedOrder.id, "pending_verification")}>
+                      <Package className="h-4 w-4 mr-2" />Mark Goods Arrived
+                    </Button>
+                  )}
+                  {!["cancelled", "rejected", "received", "pending_verification"].includes(selectedOrder.status) && (
+                    <Button variant="outline" onClick={() => updateStatus(selectedOrder.id, "cancelled")}>Cancel</Button>
+                  )}
+                </div>
+
+                {/* Voucher Verification Form */}
+                {selectedOrder.status === "pending_verification" && (
+                  <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                    <h4 className="font-semibold flex items-center gap-2"><FileCheck className="h-4 w-4" />Delivery Voucher Verification</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Voucher / Invoice Number *</Label>
+                        <Input value={voucherNumber} onChange={e => setVoucherNumber(e.target.value)} placeholder="INV-001" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Voucher Date *</Label>
+                        <Input type="date" value={voucherDate} onChange={e => setVoucherDate(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Verification Notes</Label>
+                      <Textarea value={voucherNotes} onChange={e => setVoucherNotes(e.target.value)} placeholder="Confirm items match delivery voucher, check quantities and condition..." />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={() => handleVerifyAndReceive(selectedOrder.id)} disabled={!voucherNumber || !voucherDate}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />Verify & Mark as Received
+                      </Button>
+                      <Button variant="outline" onClick={() => updateStatus(selectedOrder.id, "cancelled")}>Cancel Order</Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
