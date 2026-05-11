@@ -28,6 +28,7 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import ProcurementItems from "./pages/ProcurementItems";
 import Vendors from "./pages/Vendors";
 import ProcurementPayments from "./pages/ProcurementPayments";
+import FileManagement from "./pages/FileManagement";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/procurement/items" element={<ProcurementItems />} />
             <Route path="/procurement/vendors" element={<Vendors />} />
             <Route path="/procurement/payments" element={<ProcurementPayments />} />
+            <Route path="/files" element={<FileManagement />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

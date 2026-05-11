@@ -24,6 +24,7 @@ import {
   Store,
   Boxes,
   CreditCard,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,6 +112,8 @@ const AppLayout = () => {
     { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "manager"] },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
     { icon: ClipboardList, label: "Task Templates", path: "/task-templates", section: "HR", roles: ["admin", "manager"] },
+    // Documents Section
+    { icon: FolderOpen, label: "Files", path: "/files", section: "DOCUMENTS" },
     // Procurement Section
     { icon: ShoppingCart, label: "Purchase Orders", path: "/procurement/orders", section: "PROCUREMENT" },
     { icon: Boxes, label: "Items Catalog", path: "/procurement/items", section: "PROCUREMENT" },
@@ -185,6 +188,27 @@ const AppLayout = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredMenuItems.filter(item => item.section === "PROFILE").map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.path)}
+                      isActive={location.pathname === item.path}
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* Documents Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel>Documents</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredMenuItems.filter(item => item.section === "DOCUMENTS").map((item) => (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       onClick={() => navigate(item.path)}
