@@ -33,6 +33,16 @@ import {
   Trash2,
 } from "lucide-react";
 
+interface Package {
+  id: string;
+  name: string;
+  price: number;
+  billing_cycle: string;
+  features: string[];
+  max_channels: number;
+  max_posts_per_month: number;
+}
+
 interface Company {
   id: string;
   name: string;
@@ -40,6 +50,16 @@ interface Company {
   website: string | null;
   industry: string | null;
   description: string | null;
+  address: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  contact_person: string | null;
+  client_type: string | null;
+  package_id: string | null;
+  monthly_fee: number | null;
+  package_start_date: string | null;
+  notes: string | null;
   is_active: boolean;
 }
 
@@ -87,9 +107,17 @@ export default function ChannelManager() {
   const [addChannelOpen, setAddChannelOpen] = useState(false);
   const [newChannel, setNewChannel] = useState({ platform: "facebook", channel_name: "", channel_handle: "", channel_url: "", description: "", company_id: "" });
 
-  // Add company
+  // Packages
+  const [packages, setPackages] = useState<Package[]>([]);
+
+  // Add/Edit company
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
-  const [newCompany, setNewCompany] = useState({ name: "", website: "", industry: "", description: "" });
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [companyForm, setCompanyForm] = useState({
+    name: "", website: "", industry: "", description: "", address: "", phone: "",
+    whatsapp: "", email: "", contact_person: "", client_type: "standard",
+    package_id: "", monthly_fee: "", notes: "",
+  });
 
   useEffect(() => {
     fetchAll();
@@ -97,29 +125,65 @@ export default function ChannelManager() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [{ data: compData }, { data: chanData }] = await Promise.all([
+    const [{ data: compData }, { data: chanData }, { data: pkgData }] = await Promise.all([
       supabase.from("social_media_companies").select("*").order("name"),
       supabase.from("social_media_channels").select("*").order("platform"),
+      supabase.from("social_media_packages").select("*").order("price"),
     ]);
     setCompanies((compData || []) as any);
     setChannels((chanData || []) as any);
+    setPackages((pkgData || []) as any);
     setLoading(false);
   };
 
-  const handleAddCompany = async () => {
-    if (!newCompany.name) { toast.error("Company name required"); return; }
+  const openAddCompany = () => {
+    setEditingCompany(null);
+    setCompanyForm({ name: "", website: "", industry: "", description: "", address: "", phone: "", whatsapp: "", email: "", contact_person: "", client_type: "standard", package_id: "", monthly_fee: "", notes: "" });
+    setAddCompanyOpen(true);
+  };
+
+  const openEditCompany = (c: Company) => {
+    setEditingCompany(c);
+    setCompanyForm({
+      name: c.name, website: c.website || "", industry: c.industry || "", description: c.description || "",
+      address: c.address || "", phone: c.phone || "", whatsapp: c.whatsapp || "", email: c.email || "",
+      contact_person: c.contact_person || "", client_type: c.client_type || "standard",
+      package_id: c.package_id || "", monthly_fee: c.monthly_fee ? String(c.monthly_fee) : "", notes: c.notes || "",
+    });
+    setAddCompanyOpen(true);
+  };
+
+  const handleSaveCompany = async () => {
+    if (!companyForm.name) { toast.error("Company name required"); return; }
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("social_media_companies").insert({
-      name: newCompany.name,
-      website: newCompany.website || null,
-      industry: newCompany.industry || null,
-      description: newCompany.description || null,
-      created_by: user?.id,
-    } as any);
-    if (error) { toast.error("Failed to add company"); return; }
-    toast.success(`${newCompany.name} added`);
+    const payload = {
+      name: companyForm.name,
+      website: companyForm.website || null,
+      industry: companyForm.industry || null,
+      description: companyForm.description || null,
+      address: companyForm.address || null,
+      phone: companyForm.phone || null,
+      whatsapp: companyForm.whatsapp || null,
+      email: companyForm.email || null,
+      contact_person: companyForm.contact_person || null,
+      client_type: companyForm.client_type || "standard",
+      package_id: companyForm.package_id || null,
+      monthly_fee: companyForm.monthly_fee ? parseFloat(companyForm.monthly_fee) : null,
+      notes: companyForm.notes || null,
+    } as any;
+
+    if (editingCompany) {
+      const { error } = await supabase.from("social_media_companies").update(payload).eq("id", editingCompany.id);
+      if (error) { toast.error("Failed to update company"); return; }
+      toast.success(`${companyForm.name} updated`);
+    } else {
+      payload.created_by = user?.id;
+      const { error } = await supabase.from("social_media_companies").insert(payload);
+      if (error) { toast.error("Failed to add company"); return; }
+      toast.success(`${companyForm.name} added`);
+    }
     setAddCompanyOpen(false);
-    setNewCompany({ name: "", website: "", industry: "", description: "" });
+    setEditingCompany(null);
     fetchAll();
   };
 
@@ -193,7 +257,7 @@ export default function ChannelManager() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" onClick={() => setAddCompanyOpen(true)}>
+        <Button variant="outline" onClick={openAddCompany}>
           <Building2 className="h-4 w-4 mr-2" />
           Add Company
         </Button>
@@ -208,22 +272,40 @@ export default function ChannelManager() {
         <div className="mb-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-3">Companies</h3>
           <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {companies.map(c => (
-              <Card key={c.id} className={`cursor-pointer hover:bg-accent/50 transition-colors ${selectedCompany === c.id ? "ring-2 ring-primary" : ""}`} onClick={() => setSelectedCompany(c.id)}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-primary" />
+            {companies.map(c => {
+              const pkg = packages.find(p => p.id === c.package_id);
+              const clientTypeColors: Record<string, string> = {
+                standard: "bg-gray-100 text-gray-700", premium: "bg-amber-100 text-amber-700",
+                enterprise: "bg-purple-100 text-purple-700", startup: "bg-green-100 text-green-700",
+                agency: "bg-blue-100 text-blue-700",
+              };
+              return (
+                <Card key={c.id} className={`cursor-pointer hover:bg-accent/50 transition-colors ${selectedCompany === c.id ? "ring-2 ring-primary" : ""}`} onClick={() => setSelectedCompany(c.id)}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{c.name}</p>
+                          <p className="text-xs text-muted-foreground">{channels.filter(ch => ch.company_id === c.id).length} channels</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEditCompany(c); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{channels.filter(ch => ch.company_id === c.id).length} channels</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {c.client_type && <Badge className={`text-[10px] ${clientTypeColors[c.client_type] || ""}`}>{c.client_type}</Badge>}
+                      {c.industry && <Badge variant="outline" className="text-[10px]">{c.industry}</Badge>}
+                      {pkg && <Badge variant="outline" className="text-[10px]">{pkg.name}</Badge>}
                     </div>
-                  </div>
-                  {c.industry && <Badge variant="outline" className="mt-2 text-[10px]">{c.industry}</Badge>}
-                </CardContent>
-              </Card>
-            ))}
+                    {c.contact_person && <p className="text-xs text-muted-foreground mt-1">{c.contact_person}</p>}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
           <Separator className="mt-6" />
         </div>
@@ -326,17 +408,63 @@ export default function ChannelManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Company Dialog */}
-      <Dialog open={addCompanyOpen} onOpenChange={setAddCompanyOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Company</DialogTitle></DialogHeader>
+      {/* Add/Edit Company Dialog */}
+      <Dialog open={addCompanyOpen} onOpenChange={(open) => { if (!open) { setAddCompanyOpen(false); setEditingCompany(null); } }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingCompany ? "Edit" : "Add"} Company</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <div><Label>Company Name</Label><Input value={newCompany.name} onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })} placeholder="Acme Corp" /></div>
-            <div><Label>Website</Label><Input value={newCompany.website} onChange={(e) => setNewCompany({ ...newCompany, website: e.target.value })} placeholder="https://..." /></div>
-            <div><Label>Industry</Label><Input value={newCompany.industry} onChange={(e) => setNewCompany({ ...newCompany, industry: e.target.value })} placeholder="Technology, Finance, etc." /></div>
-            <div><Label>Description</Label><Textarea value={newCompany.description} onChange={(e) => setNewCompany({ ...newCompany, description: e.target.value })} placeholder="Brief description..." rows={3} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Company Name *</Label><Input value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} placeholder="Acme Corp" /></div>
+              <div><Label>Contact Person</Label><Input value={companyForm.contact_person} onChange={(e) => setCompanyForm({ ...companyForm, contact_person: e.target.value })} placeholder="John Doe" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Email</Label><Input type="email" value={companyForm.email} onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })} placeholder="info@company.com" /></div>
+              <div><Label>Phone</Label><Input value={companyForm.phone} onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })} placeholder="+880 1XXX-XXXXXX" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>WhatsApp</Label><Input value={companyForm.whatsapp} onChange={(e) => setCompanyForm({ ...companyForm, whatsapp: e.target.value })} placeholder="+880 1XXX-XXXXXX" /></div>
+              <div><Label>Website</Label><Input value={companyForm.website} onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })} placeholder="https://..." /></div>
+            </div>
+            <div><Label>Address</Label><Input value={companyForm.address} onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })} placeholder="Full address" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Industry</Label><Input value={companyForm.industry} onChange={(e) => setCompanyForm({ ...companyForm, industry: e.target.value })} placeholder="Technology, Finance..." /></div>
+              <div>
+                <Label>Client Type</Label>
+                <Select value={companyForm.client_type} onValueChange={(v) => setCompanyForm({ ...companyForm, client_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="startup">Startup</SelectItem>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    <SelectItem value="agency">Agency</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Separator />
+            <h4 className="text-sm font-medium">Package & Billing</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Package</Label>
+                <Select value={companyForm.package_id} onValueChange={(v) => setCompanyForm({ ...companyForm, package_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select package" /></SelectTrigger>
+                  <SelectContent>
+                    {packages.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name} — BDT {p.price.toLocaleString()}/{p.billing_cycle}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Monthly Fee (BDT)</Label><Input type="number" value={companyForm.monthly_fee} onChange={(e) => setCompanyForm({ ...companyForm, monthly_fee: e.target.value })} placeholder="0" /></div>
+            </div>
+            <div><Label>Description</Label><Textarea value={companyForm.description} onChange={(e) => setCompanyForm({ ...companyForm, description: e.target.value })} placeholder="About this client..." rows={2} /></div>
+            <div><Label>Notes</Label><Textarea value={companyForm.notes} onChange={(e) => setCompanyForm({ ...companyForm, notes: e.target.value })} placeholder="Internal notes..." rows={2} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setAddCompanyOpen(false)}>Cancel</Button><Button onClick={handleAddCompany}>Add Company</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddCompanyOpen(false); setEditingCompany(null); }}>Cancel</Button>
+            <Button onClick={handleSaveCompany}>{editingCompany ? "Save Changes" : "Add Company"}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
