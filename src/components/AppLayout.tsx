@@ -25,6 +25,7 @@ import {
   Boxes,
   CreditCard,
   FolderOpen,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,6 +115,8 @@ const AppLayout = () => {
     { icon: ClipboardList, label: "Task Templates", path: "/task-templates", section: "HR", roles: ["admin", "manager"] },
     // Documents Section
     { icon: FolderOpen, label: "Files", path: "/files", section: "DOCUMENTS" },
+    // Social Media Section
+    { icon: Megaphone, label: "Social Media", path: "/social-media", section: "SOCIAL MEDIA" },
     // Procurement Section
     { icon: ShoppingCart, label: "Purchase Orders", path: "/procurement/orders", section: "PROCUREMENT" },
     { icon: Boxes, label: "Items Catalog", path: "/procurement/items", section: "PROCUREMENT" },
@@ -209,6 +212,27 @@ const AppLayout = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredMenuItems.filter(item => item.section === "DOCUMENTS").map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.path)}
+                      isActive={location.pathname === item.path}
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* Social Media Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel>Social Media</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredMenuItems.filter(item => item.section === "SOCIAL MEDIA").map((item) => (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       onClick={() => navigate(item.path)}
