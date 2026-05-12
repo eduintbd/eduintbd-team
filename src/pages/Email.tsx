@@ -92,6 +92,41 @@ function relativeDate(dateStr: string): string {
 // ---------------------------------------------------------------------------
 
 const Email = () => {
+  // User email access check
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userProvider, setUserProvider] = useState<string | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setAccessChecked(true); return; }
+
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("company_email, company_email_provider, email")
+        .eq("user_id", user.id)
+        .single();
+
+      if (emp?.company_email_provider === "google" && emp?.company_email) {
+        setUserEmail(emp.company_email);
+        setUserProvider("google");
+        setHasAccess(true);
+      } else if (emp?.company_email_provider === "purelymail" && emp?.company_email) {
+        setUserEmail(emp.company_email);
+        setUserProvider("purelymail");
+        setHasAccess(false); // Purelymail IMAP not yet per-user
+      } else {
+        setUserEmail(emp?.email || null);
+        setUserProvider(null);
+        setHasAccess(false);
+      }
+      setAccessChecked(true);
+    };
+    checkAccess();
+  }, []);
+
   // Profile
   const [profile, setProfile] = useState<GmailProfile | null>(null);
 
@@ -282,6 +317,38 @@ const Email = () => {
     { label: "Drafts", query: "in:drafts", icon: FileText },
     { label: "Trash", query: "in:trash", icon: Trash2 },
   ];
+
+  // Access gate
+  if (!accessChecked) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-center px-4">
+        <Mail className="h-16 w-16 text-muted-foreground/30 mb-4" />
+        <h2 className="text-xl font-bold mb-2">Email Not Available</h2>
+        {userProvider === "purelymail" ? (
+          <p className="text-muted-foreground max-w-md">
+            Your email ({userEmail}) is hosted on Purelymail. Please access your inbox at{" "}
+            <a href="https://purelymail.com" target="_blank" className="text-primary hover:underline">
+              purelymail.com
+            </a>{" "}
+            or configure an email client with IMAP (imap.purelymail.com:993).
+          </p>
+        ) : (
+          <p className="text-muted-foreground max-w-md">
+            You don't have a company email configured. Contact your admin to set up your @eduintbd.com email
+            in User Management.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">

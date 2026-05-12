@@ -107,6 +107,25 @@ function toLocalISOString(date: Date): string {
 // ---------------------------------------------------------------------------
 
 const Calendar = () => {
+  // Access check
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setAccessChecked(true); return; }
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("company_email_provider")
+        .eq("user_id", user.id)
+        .single();
+      setHasAccess(emp?.company_email_provider === "google");
+      setAccessChecked(true);
+    };
+    checkAccess();
+  }, []);
+
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -293,6 +312,27 @@ const Calendar = () => {
   // -----------------------------------------------------------------------
   // Render
   // -----------------------------------------------------------------------
+
+  if (!accessChecked) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-center px-4">
+        <CalendarDays className="h-16 w-16 text-muted-foreground/30 mb-4" />
+        <h2 className="text-xl font-bold mb-2">Calendar Not Available</h2>
+        <p className="text-muted-foreground max-w-md">
+          Google Calendar is only available for Google Workspace users.
+          Contact your admin to set up your @eduintbd.com Google Workspace account.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
