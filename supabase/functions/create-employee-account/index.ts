@@ -169,7 +169,12 @@ serve(async (req) => {
 
     const employeeCode = `EDU${String(nextNumber).padStart(2, "0")}`;
 
-    // Create employee record with pending status
+    // Determine registration status
+    // Auto-approve Google Workspace users (@eduintbd.com)
+    const isAutoApprove = employeeData.auto_approve === true;
+    const registrationStatus = isAutoApprove ? "approved" : "pending";
+
+    // Create employee record
     const { data: empData, error: empError } = await supabaseClient
       .from("employees")
       .insert({
@@ -178,9 +183,9 @@ serve(async (req) => {
         first_name: employeeData.first_name,
         last_name: employeeData.last_name,
         email,
-        phone: employeeData.phone,
+        phone: employeeData.phone || "",
         hire_date: employeeData.hire_date ?? new Date().toISOString().split("T")[0],
-        registration_status: "pending",
+        registration_status: registrationStatus,
       })
       .select()
       .single();
@@ -189,11 +194,20 @@ serve(async (req) => {
       throw empError;
     }
 
+    // Auto-assign employee role for auto-approved users
+    if (isAutoApprove) {
+      await supabaseClient.from("user_roles").upsert(
+        { user_id: userId, role: "employee" },
+        { onConflict: "user_id,role" }
+      );
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         employee: empData,
         auth_user_already_existed: authUserExisted,
+        auto_approved: isAutoApprove,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
