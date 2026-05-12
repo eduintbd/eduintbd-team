@@ -29,6 +29,9 @@ import {
   Inbox,
   CalendarDays,
   UserCog,
+  Pencil,
+  ShoppingBasket,
+  CreditCard as CreditCardIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,6 +126,10 @@ const AppLayout = () => {
     { icon: FolderOpen, label: "Files", path: "/files", section: "DOCUMENTS" },
     // Social Media Section
     { icon: Megaphone, label: "Social Media", path: "/social-media", section: "SOCIAL MEDIA" },
+    // Operations Section
+    { icon: Pencil, label: "Stationary", path: "/stationary", section: "OPERATIONS" },
+    { icon: ShoppingBasket, label: "Grocery", path: "/grocery", section: "OPERATIONS" },
+    { icon: CreditCardIcon, label: "Cards", path: "/cards", section: "OPERATIONS" },
     // Procurement Section
     { icon: ShoppingCart, label: "Purchase Orders", path: "/procurement/orders", section: "PROCUREMENT" },
     { icon: Boxes, label: "Items Catalog", path: "/procurement/items", section: "PROCUREMENT" },
@@ -260,6 +267,27 @@ const AppLayout = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredMenuItems.filter(item => item.section === "HR").map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.path)}
+                      isActive={location.pathname === item.path}
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* Operations Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel>Operations</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredMenuItems.filter(item => item.section === "OPERATIONS").map((item) => (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       onClick={() => navigate(item.path)}
