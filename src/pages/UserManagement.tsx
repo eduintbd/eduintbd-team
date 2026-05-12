@@ -67,6 +67,7 @@ const UserManagement = () => {
   const [newPhone, setNewPhone] = useState("");
   const [newProvider, setNewProvider] = useState("purelymail");
   const [newCompanyEmail, setNewCompanyEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [addingUser, setAddingUser] = useState(false);
 
   useEffect(() => {
@@ -135,6 +136,12 @@ const UserManagement = () => {
     setAddingUser(true);
 
     try {
+      if (!newPassword || newPassword.length < 12) {
+        toast.error("Password must be at least 12 characters");
+        setAddingUser(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("create-employee-account", {
         body: {
           employeeData: {
@@ -142,6 +149,7 @@ const UserManagement = () => {
             last_name: newLastName,
             email: newEmail,
             phone: newPhone,
+            password: newPassword,
             auto_approve: true,
           },
         },
@@ -163,13 +171,31 @@ const UserManagement = () => {
           .eq("id", data.employee.id);
       }
 
-      toast.success(`${newFirstName} ${newLastName} added successfully`);
+      // Send welcome email with login credentials
+      try {
+        await supabase.functions.invoke("send-welcome-email", {
+          body: {
+            email: newEmail,
+            firstName: newFirstName,
+            lastName: newLastName,
+            password: newPassword,
+            loginUrl: "https://team.aibd.ai/auth",
+            companyEmail: newCompanyEmail || undefined,
+          },
+        });
+      } catch {
+        // Don't fail the whole flow if email fails
+        console.warn("Welcome email failed to send");
+      }
+
+      toast.success(`${newFirstName} ${newLastName} added and welcome email sent`);
       setAddUserOpen(false);
       setNewFirstName("");
       setNewLastName("");
       setNewEmail("");
       setNewPhone("");
       setNewCompanyEmail("");
+      setNewPassword("");
       fetchEmployees();
     } catch (err: any) {
       toast.error(err.message || "Failed to add user");
@@ -514,6 +540,10 @@ const UserManagement = () => {
             <div className="space-y-2">
               <Label>Phone</Label>
               <Input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+880 1XXX-XXXXXX" />
+            </div>
+            <div className="space-y-2">
+              <Label>Password (min 12 characters)</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Set login password" />
             </div>
             <Separator />
             <div className="space-y-2">

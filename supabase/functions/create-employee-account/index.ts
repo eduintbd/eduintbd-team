@@ -73,11 +73,17 @@ serve(async (req) => {
     let authUserExisted = Boolean(userId);
 
     if (!userId) {
+      const createUserPayload: any = {
+        email,
+        email_confirm: true,
+      };
+      // Set password if provided (from admin Add User flow)
+      if (employeeData.password) {
+        createUserPayload.password = employeeData.password;
+      }
+
       const { data: createdAuth, error: createAuthError } =
-        await supabaseClient.auth.admin.createUser({
-          email,
-          email_confirm: true,
-        });
+        await supabaseClient.auth.admin.createUser(createUserPayload);
 
       if (createAuthError) {
         const msg = String((createAuthError as any)?.message ?? "");
