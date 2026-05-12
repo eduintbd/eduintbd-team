@@ -65,14 +65,6 @@ interface GmailProfile {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function gmailProxy<T = any>(action: string, params: Record<string, any> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("gmail-proxy", {
-    body: { action, ...params },
-  });
-  if (error) throw error;
-  return data as T;
-}
-
 function relativeDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -116,7 +108,7 @@ const Email = () => {
       } else if (emp?.company_email_provider === "purelymail" && emp?.company_email) {
         setUserEmail(emp.company_email);
         setUserProvider("purelymail");
-        setHasAccess(false); // Purelymail IMAP not yet per-user
+        setHasAccess(true); // Purelymail users get their own IMAP inbox
       } else {
         setUserEmail(emp?.email || null);
         setUserProvider(null);
@@ -126,6 +118,16 @@ const Email = () => {
     };
     checkAccess();
   }, []);
+
+  // Email proxy — routes to gmail-proxy or purelymail-proxy based on user's provider
+  const emailProxy = useCallback(async <T = any>(action: string, params: Record<string, any> = {}): Promise<T> => {
+    const functionName = userProvider === "purelymail" ? "purelymail-proxy" : "gmail-proxy";
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: { action, ...params },
+    });
+    if (error) throw error;
+    return data as T;
+  }, [userProvider]);
 
   // Profile
   const [profile, setProfile] = useState<GmailProfile | null>(null);
@@ -159,7 +161,7 @@ const Email = () => {
   // -----------------------------------------------------------------------
 
   useEffect(() => {
-    gmailProxy<GmailProfile>("get_profile")
+    emailProxy<GmailProfile>("get_profile")
       .then(setProfile)
       .catch((err) => console.error("Failed to load profile", err));
   }, []);
@@ -173,7 +175,7 @@ const Email = () => {
       setThreadsLoading(true);
       try {
         const query = searchQuery ? `${activeLabel} ${searchQuery}` : activeLabel;
-        const res = await gmailProxy<{ threads: GmailThread[]; nextPageToken?: string }>(
+        const res = await emailProxy<{ threads: GmailThread[]; nextPageToken?: string }>(
           "list_threads",
           { query, maxResults: 20, pageToken }
         );
@@ -211,7 +213,7 @@ const Email = () => {
     }
     let cancelled = false;
     setThreadLoading(true);
-    gmailProxy<{ messages: GmailMessage[] }>("get_thread", { threadId: selectedThreadId })
+    emailProxy<{ messages: GmailMessage[] }>("get_thread", { threadId: selectedThreadId })
       .then((res) => {
         if (!cancelled) setMessages(res.messages ?? []);
       })
@@ -231,7 +233,7 @@ const Email = () => {
   const handleArchive = async () => {
     if (!selectedThreadId) return;
     try {
-      await gmailProxy("archive_thread", { threadId: selectedThreadId });
+      await emailProxy("archive_thread", { threadId: selectedThreadId });
       toast.success("Thread archived");
       setThreads((prev) => prev.filter((t) => t.id !== selectedThreadId));
       setSelectedThreadId(null);
@@ -243,7 +245,7 @@ const Email = () => {
   const handleTrash = async () => {
     if (!selectedThreadId) return;
     try {
-      await gmailProxy("trash_thread", { threadId: selectedThreadId });
+      await emailProxy("trash_thread", { threadId: selectedThreadId });
       toast.success("Thread trashed");
       setThreads((prev) => prev.filter((t) => t.id !== selectedThreadId));
       setSelectedThreadId(null);
@@ -269,7 +271,7 @@ const Email = () => {
       if (replyInReplyTo) payload.inReplyTo = replyInReplyTo;
       if (replyReferences) payload.references = replyReferences;
 
-      await gmailProxy("send_email", payload);
+      await emailProxy("send_email", payload);
       toast.success("Email sent");
       resetCompose();
       fetchThreads();
