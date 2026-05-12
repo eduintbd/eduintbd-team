@@ -329,25 +329,88 @@ const Email = () => {
     );
   }
 
+  // Purelymail password setup
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [emailPasswordInput, setEmailPasswordInput] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  useEffect(() => {
+    if (accessChecked && userProvider === "purelymail" && hasAccess) {
+      // Check if purelymail_password is set
+      const checkPassword = async () => {
+        const { data: { user: u } } = await supabase.auth.getUser();
+        if (!u) return;
+        const { data: emp } = await supabase
+          .from("employees")
+          .select("purelymail_password")
+          .eq("user_id", u.id)
+          .single();
+        if (!emp?.purelymail_password) {
+          setNeedsPassword(true);
+        }
+      };
+      checkPassword();
+    }
+  }, [accessChecked, userProvider, hasAccess]);
+
+  const handleSaveEmailPassword = async () => {
+    if (!emailPasswordInput || emailPasswordInput.length < 6) {
+      toast.error("Please enter your email password");
+      return;
+    }
+    setSavingPassword(true);
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (!u) { setSavingPassword(false); return; }
+
+    const { error } = await supabase
+      .from("employees")
+      .update({ purelymail_password: emailPasswordInput })
+      .eq("user_id", u.id);
+
+    if (error) {
+      toast.error("Failed to save password");
+    } else {
+      toast.success("Email password saved — loading your inbox...");
+      setNeedsPassword(false);
+    }
+    setSavingPassword(false);
+  };
+
   if (!hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-center px-4">
         <Mail className="h-16 w-16 text-muted-foreground/30 mb-4" />
         <h2 className="text-xl font-bold mb-2">Email Not Available</h2>
-        {userProvider === "purelymail" ? (
-          <p className="text-muted-foreground max-w-md">
-            Your email ({userEmail}) is hosted on Purelymail. Please access your inbox at{" "}
-            <a href="https://purelymail.com" target="_blank" className="text-primary hover:underline">
-              purelymail.com
-            </a>{" "}
-            or configure an email client with IMAP (imap.purelymail.com:993).
-          </p>
-        ) : (
-          <p className="text-muted-foreground max-w-md">
-            You don't have a company email configured. Contact your admin to set up your @eduintbd.com email
-            in User Management.
-          </p>
-        )}
+        <p className="text-muted-foreground max-w-md">
+          You don't have a company email configured. Contact your admin to set up your @eduintbd.com email
+          in User Management.
+        </p>
+      </div>
+    );
+  }
+
+  if (needsPassword) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-center px-4">
+        <Mail className="h-16 w-16 text-primary/30 mb-4" />
+        <h2 className="text-xl font-bold mb-2">Connect Your Email</h2>
+        <p className="text-muted-foreground max-w-md mb-6">
+          Enter your <strong>{userEmail}</strong> email password to access your inbox.
+          This is your Purelymail password, not your Back Office login password.
+        </p>
+        <div className="flex gap-2 w-full max-w-sm">
+          <Input
+            type="password"
+            value={emailPasswordInput}
+            onChange={(e) => setEmailPasswordInput(e.target.value)}
+            placeholder="Your email password"
+            onKeyDown={(e) => e.key === "Enter" && handleSaveEmailPassword()}
+            className="flex-1"
+          />
+          <Button onClick={handleSaveEmailPassword} disabled={savingPassword}>
+            {savingPassword ? "Saving..." : "Connect"}
+          </Button>
+        </div>
       </div>
     );
   }
