@@ -21,6 +21,9 @@ import PostComposer from "@/components/social-media/PostComposer";
 import ContentCalendar from "@/components/social-media/ContentCalendar";
 import SocialAnalytics from "@/components/social-media/SocialAnalytics";
 import PostTemplates from "@/components/social-media/PostTemplates";
+import ContentPipeline from "@/components/social-media/ContentPipeline";
+import UsageTracker from "@/components/social-media/UsageTracker";
+import InvoiceManager from "@/components/social-media/InvoiceManager";
 
 function formatNumber(n: number) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -149,6 +152,15 @@ export default function SocialMedia() {
           <TabsTrigger value="templates" className="gap-1.5">
             <FileText className="h-4 w-4" /> Templates
           </TabsTrigger>
+          <TabsTrigger value="pipeline" className="gap-1.5">
+            <Clock className="h-4 w-4" /> Pipeline
+          </TabsTrigger>
+          <TabsTrigger value="usage" className="gap-1.5">
+            <BarChart3 className="h-4 w-4" /> Usage
+          </TabsTrigger>
+          <TabsTrigger value="invoices" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Invoices
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="feed">
@@ -173,6 +185,18 @@ export default function SocialMedia() {
 
         <TabsContent value="templates">
           <PostTemplates />
+        </TabsContent>
+
+        <TabsContent value="pipeline">
+          <ContentPipeline />
+        </TabsContent>
+
+        <TabsContent value="usage">
+          <UsageTracker />
+        </TabsContent>
+
+        <TabsContent value="invoices">
+          <InvoiceManager />
         </TabsContent>
       </Tabs>
     </div>
