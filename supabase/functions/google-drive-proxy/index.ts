@@ -291,7 +291,6 @@ serve(async (req) => {
         );
         const updatedFile = await res.json();
 
-        // Update version in Supabase
         const { data: fileRecord } = await supabaseClient
           .from("file_items")
           .select("current_version")
@@ -316,6 +315,246 @@ serve(async (req) => {
         });
 
         result = { ...updatedFile, version: newVersion };
+        break;
+      }
+
+      case "create_google_doc": {
+        // Create Google Docs, Sheets, Slides, or Forms
+        const mimeTypes: Record<string, string> = {
+          doc: "application/vnd.google-apps.document",
+          sheet: "application/vnd.google-apps.spreadsheet",
+          slide: "application/vnd.google-apps.presentation",
+          form: "application/vnd.google-apps.form",
+        };
+        const mimeType = mimeTypes[params.docType] || mimeTypes.doc;
+        const parentId = params.parentFolderId || ROOT_FOLDER_ID();
+
+        const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: params.name,
+            mimeType,
+            parents: [parentId],
+          }),
+        });
+        const driveFile = await res.json();
+        if (driveFile.error) throw new Error(driveFile.error.message);
+
+        // Save metadata to Supabase
+        const { data: fileRecord, error: fileError } = await supabaseClient
+          .from("file_items")
+          .insert({
+            name: params.name,
+            folder_id: params.folderDbId || null,
+            google_drive_file_id: driveFile.id,
+            mime_type: mimeType,
+            file_size: 0,
+            uploaded_by: user.id,
+          })
+          .select()
+          .single();
+        if (fileError) throw fileError;
+
+        await supabaseClient.from("file_versions").insert({
+          file_id: fileRecord.id,
+          version_number: 1,
+          google_drive_file_id: driveFile.id,
+          file_size: 0,
+          change_notes: "Created",
+          uploaded_by: user.id,
+        });
+
+        // Audit log
+        await supabaseClient.from("file_audit_log").insert({
+          file_id: fileRecord.id,
+          user_id: user.id,
+          action: "create_doc",
+          details: { docType: params.docType, name: params.name },
+        });
+
+        result = { ...driveFile, dbRecord: fileRecord };
+        break;
+      }
+
+      case "create_from_template": {
+        // Copy a template file in Google Drive
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${params.templateDriveId}/copy`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: params.name,
+              parents: [params.parentFolderId || ROOT_FOLDER_ID()],
+            }),
+          }
+        );
+        const copiedFile = await res.json();
+        if (copiedFile.error) throw new Error(copiedFile.error.message);
+
+        const { data: fileRecord, error: fileError } = await supabaseClient
+          .from("file_items")
+          .insert({
+            name: params.name,
+            folder_id: params.folderDbId || null,
+            google_drive_file_id: copiedFile.id,
+            mime_type: copiedFile.mimeType,
+            file_size: 0,
+            description: `Created from template: ${params.templateName}`,
+            uploaded_by: user.id,
+          })
+          .select()
+          .single();
+        if (fileError) throw fileError;
+
+        await supabaseClient.from("file_audit_log").insert({
+          file_id: fileRecord.id,
+          user_id: user.id,
+          action: "create_doc",
+          details: { fromTemplate: params.templateName },
+        });
+
+        result = { ...copiedFile, dbRecord: fileRecord };
+        break;
+      }
+
+      case "move_file": {
+        // Move file in Google Drive
+        const fileMetaRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${params.googleDriveFileId}?fields=parents`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const fileMeta = await fileMetaRes.json();
+        const previousParents = (fileMeta.parents || []).join(",");
+
+        await fetch(
+          `https://www.googleapis.com/drive/v3/files/${params.googleDriveFileId}?addParents=${params.newParentDriveId}&removeParents=${previousParents}`,
+          {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+
+        // Update in Supabase
+        await supabaseClient
+          .from("file_items")
+          .update({ folder_id: params.newFolderDbId || null, updated_at: new Date().toISOString() })
+          .eq("id", params.fileDbId);
+
+        await supabaseClient.from("file_audit_log").insert({
+          file_id: params.fileDbId,
+          user_id: user.id,
+          action: "move",
+          details: { to: params.newFolderDbId },
+        });
+
+        result = { success: true };
+        break;
+      }
+
+      case "share_file": {
+        // Create sharing permission in Google Drive
+        const permRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${params.googleDriveFileId}/permissions`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              type: params.shareType === "link" ? "anyone" : "user",
+              role: params.permission || "reader",
+              ...(params.shareType !== "link" && { emailAddress: params.email }),
+            }),
+          }
+        );
+        const perm = await permRes.json();
+
+        // Get shareable link
+        let linkUrl = "";
+        if (params.shareType === "link") {
+          const linkRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${params.googleDriveFileId}?fields=webViewLink`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const linkData = await linkRes.json();
+          linkUrl = linkData.webViewLink || "";
+        }
+
+        // Save share record
+        const { data: shareRecord } = await supabaseClient
+          .from("file_shares")
+          .insert({
+            file_id: params.fileDbId,
+            shared_by: user.id,
+            share_type: params.shareType || "link",
+            share_target: params.email || null,
+            permission: params.permission === "writer" ? "edit" : params.permission === "commenter" ? "comment" : "view",
+            google_drive_permission_id: perm.id,
+            link_url: linkUrl,
+          })
+          .select()
+          .single();
+
+        await supabaseClient.from("file_audit_log").insert({
+          file_id: params.fileDbId,
+          user_id: user.id,
+          action: "share",
+          details: { shareType: params.shareType, target: params.email, permission: params.permission },
+        });
+
+        result = { ...perm, linkUrl, dbRecord: shareRecord };
+        break;
+      }
+
+      case "unshare_file": {
+        if (params.googleDrivePermissionId) {
+          await fetch(
+            `https://www.googleapis.com/drive/v3/files/${params.googleDriveFileId}/permissions/${params.googleDrivePermissionId}`,
+            {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+        }
+
+        await supabaseClient
+          .from("file_shares")
+          .delete()
+          .eq("id", params.shareDbId);
+
+        result = { success: true };
+        break;
+      }
+
+      case "log_activity": {
+        await supabaseClient.from("file_audit_log").insert({
+          file_id: params.fileId || null,
+          folder_id: params.folderId || null,
+          user_id: user.id,
+          action: params.activityType,
+          details: params.details || {},
+        });
+
+        // Update recent views if it's a view action
+        if (params.activityType === "view" && params.fileId) {
+          await supabaseClient
+            .from("file_recent_views")
+            .upsert(
+              { file_id: params.fileId, user_id: user.id, viewed_at: new Date().toISOString() },
+              { onConflict: "file_id,user_id" }
+            );
+        }
+
+        result = { success: true };
         break;
       }
 

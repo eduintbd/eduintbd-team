@@ -1,4 +1,4 @@
-import { Folder, File, FileText, Image, FileSpreadsheet, Film, Music, Archive, MoreVertical, Download, Trash2, Eye } from "lucide-react";
+import { Folder, File, FileText, Image, FileSpreadsheet, Film, Music, Archive, MoreVertical, Download, Trash2, Eye, Share2, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface FileGridProps {
   onFileDownload: (file: FileItem) => void;
   onFileDelete: (file: FileItem) => void;
   onFolderDelete: (folder: FolderItem) => void;
+  onFileShare?: (file: FileItem) => void;
 }
 
 function getFileIcon(mimeType: string) {
@@ -48,7 +49,7 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const FileGrid = ({ folders, files, onFolderClick, onFilePreview, onFileDownload, onFileDelete, onFolderDelete }: FileGridProps) => {
+const FileGrid = ({ folders, files, onFolderClick, onFilePreview, onFileDownload, onFileDelete, onFolderDelete, onFileShare }: FileGridProps) => {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
       {folders.map((folder) => (
@@ -105,6 +106,18 @@ const FileGrid = ({ folders, files, onFolderClick, onFilePreview, onFileDownload
                     <DropdownMenuItem onClick={() => onFileDownload(file)}>
                       <Download className="h-4 w-4 mr-2" />
                       Download
+                    </DropdownMenuItem>
+                    {onFileShare && (
+                      <DropdownMenuItem onClick={() => onFileShare(file)}>
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={() => window.open(`https://drive.google.com/file/d/${file.google_drive_file_id}/edit`, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open in Drive
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onFileDelete(file)} className="text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" />
