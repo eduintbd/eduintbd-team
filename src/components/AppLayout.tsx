@@ -28,6 +28,7 @@ import {
   Megaphone,
   Inbox,
   CalendarDays,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +114,7 @@ const AppLayout = () => {
     { icon: CalendarDays, label: "Calendar", path: "/calendar", section: "PROFILE" },
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
+    { icon: UserCog, label: "User Management", path: "/user-management", section: "HR", roles: ["admin", "manager"] },
     { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "manager"] },
     { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "manager"] },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },

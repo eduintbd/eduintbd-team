@@ -32,6 +32,7 @@ import FileManagement from "./pages/FileManagement";
 import SocialMedia from "./pages/SocialMedia";
 import Email from "./pages/Email";
 import Calendar from "./pages/Calendar";
+import UserManagement from "./pages/UserManagement";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/social-media" element={<SocialMedia />} />
             <Route path="/email" element={<Email />} />
             <Route path="/calendar" element={<Calendar />} />
+            <Route path="/user-management" element={<UserManagement />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
