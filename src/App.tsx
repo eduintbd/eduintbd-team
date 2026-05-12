@@ -30,6 +30,8 @@ import Vendors from "./pages/Vendors";
 import ProcurementPayments from "./pages/ProcurementPayments";
 import FileManagement from "./pages/FileManagement";
 import SocialMedia from "./pages/SocialMedia";
+import Email from "./pages/Email";
+import Calendar from "./pages/Calendar";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +68,8 @@ const App = () => (
             <Route path="/procurement/payments" element={<ProcurementPayments />} />
             <Route path="/files" element={<FileManagement />} />
             <Route path="/social-media" element={<SocialMedia />} />
+            <Route path="/email" element={<Email />} />
+            <Route path="/calendar" element={<Calendar />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

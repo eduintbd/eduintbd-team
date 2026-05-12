@@ -26,6 +26,8 @@ import {
   CreditCard,
   FolderOpen,
   Megaphone,
+  Inbox,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,6 +109,8 @@ const AppLayout = () => {
     // Profile - visible to all
     { icon: User, label: "My Profile", path: "/profile", section: "PROFILE" },
     { icon: Mail, label: "Messages", path: "/messages", section: "PROFILE" },
+    { icon: Inbox, label: "Email", path: "/email", section: "PROFILE" },
+    { icon: CalendarDays, label: "Calendar", path: "/calendar", section: "PROFILE" },
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
     { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "manager"] },
