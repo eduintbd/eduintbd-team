@@ -64,7 +64,7 @@ export default function Onboarding() {
     }
 
     if (data.onboarding_completed) {
-      navigate("/");
+      navigate("/dashboard", { replace: true });
       return;
     }
 
@@ -173,7 +173,7 @@ export default function Onboarding() {
       if (updateError) throw updateError;
 
       toast.success("Onboarding completed successfully!");
-      navigate("/");
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
       toast.error("Failed to complete onboarding: " + error.message);
     } finally {
