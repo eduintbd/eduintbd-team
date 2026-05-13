@@ -31,6 +31,7 @@ import {
   UserCog,
   Pencil,
   ShoppingBasket,
+  Home,
   CreditCard as CreditCardIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,7 +129,7 @@ const AppLayout = () => {
     { icon: Megaphone, label: "Social Media", path: "/social-media", section: "SOCIAL MEDIA" },
     // Operations Section
     { icon: Pencil, label: "Stationary", path: "/stationary", section: "OPERATIONS" },
-    { icon: ShoppingBasket, label: "Grocery", path: "/grocery", section: "OPERATIONS" },
+    { icon: Home, label: "Home & Office", path: "/grocery", section: "OPERATIONS" },
     { icon: CreditCardIcon, label: "Cards", path: "/cards", section: "OPERATIONS" },
     // Procurement Section
     { icon: ShoppingCart, label: "Purchase Orders", path: "/procurement/orders", section: "PROCUREMENT" },

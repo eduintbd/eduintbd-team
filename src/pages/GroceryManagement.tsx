@@ -55,6 +55,9 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
+import MonthlyProvisions from "@/components/grocery/MonthlyProvisions";
+import StaffDuties from "@/components/grocery/StaffDuties";
+import PetCare from "@/components/grocery/PetCare";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -585,10 +588,10 @@ const GroceryManagement = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Grocery &amp; Pantry Management
+            Home &amp; Office Management
           </h1>
           <p className="text-muted-foreground">
-            Manage inventory, orders, budgets, and staff requests
+            Manage grocery, provisions, facility tasks, and pet care
           </p>
         </div>
         <div className="flex gap-2">
@@ -676,12 +679,15 @@ const GroceryManagement = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start">
+        <TabsList className="w-full justify-start flex-wrap h-auto">
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="budget">Budget</TabsTrigger>
           <TabsTrigger value="requests">Staff Requests</TabsTrigger>
           <TabsTrigger value="expiry">Expiry Tracker</TabsTrigger>
+          <TabsTrigger value="provisions">Monthly Provisions</TabsTrigger>
+          <TabsTrigger value="duties">Staff Duties</TabsTrigger>
+          <TabsTrigger value="petcare">Pet Care</TabsTrigger>
         </TabsList>
 
         {/* ================================================================= */}
@@ -1099,6 +1105,18 @@ const GroceryManagement = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="provisions" className="space-y-4">
+          <MonthlyProvisions />
+        </TabsContent>
+
+        <TabsContent value="duties" className="space-y-4">
+          <StaffDuties />
+        </TabsContent>
+
+        <TabsContent value="petcare" className="space-y-4">
+          <PetCare />
         </TabsContent>
       </Tabs>
 
