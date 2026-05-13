@@ -114,10 +114,15 @@ export default function ChannelManager() {
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [companyForm, setCompanyForm] = useState({
-    name: "", website: "", industry: "", description: "", address: "", phone: "",
+    name: "", logo_url: "", website: "", industry: "", description: "", address: "", phone: "",
     whatsapp: "", email: "", contact_person: "", client_type: "standard",
     package_id: "", monthly_fee: "", notes: "",
   });
+
+  // Inline channel rows for company setup
+  const [companyChannelRows, setCompanyChannelRows] = useState<
+    { platform: string; channel_name: string; channel_handle: string; channel_url: string }[]
+  >([]);
 
   useEffect(() => {
     fetchAll();
@@ -138,18 +143,27 @@ export default function ChannelManager() {
 
   const openAddCompany = () => {
     setEditingCompany(null);
-    setCompanyForm({ name: "", website: "", industry: "", description: "", address: "", phone: "", whatsapp: "", email: "", contact_person: "", client_type: "standard", package_id: "", monthly_fee: "", notes: "" });
+    setCompanyForm({ name: "", logo_url: "", website: "", industry: "", description: "", address: "", phone: "", whatsapp: "", email: "", contact_person: "", client_type: "standard", package_id: "", monthly_fee: "", notes: "" });
+    setCompanyChannelRows([]);
     setAddCompanyOpen(true);
   };
 
   const openEditCompany = (c: Company) => {
     setEditingCompany(c);
     setCompanyForm({
-      name: c.name, website: c.website || "", industry: c.industry || "", description: c.description || "",
+      name: c.name, logo_url: c.logo_url || "", website: c.website || "", industry: c.industry || "", description: c.description || "",
       address: c.address || "", phone: c.phone || "", whatsapp: c.whatsapp || "", email: c.email || "",
       contact_person: c.contact_person || "", client_type: c.client_type || "standard",
       package_id: c.package_id || "", monthly_fee: c.monthly_fee ? String(c.monthly_fee) : "", notes: c.notes || "",
     });
+    // Load existing channels for this company
+    const existingChannels = channels.filter(ch => ch.company_id === c.id);
+    setCompanyChannelRows(existingChannels.map(ch => ({
+      platform: ch.platform,
+      channel_name: ch.channel_name,
+      channel_handle: ch.channel_handle || "",
+      channel_url: ch.channel_url || "",
+    })));
     setAddCompanyOpen(true);
   };
 
@@ -158,6 +172,7 @@ export default function ChannelManager() {
     const { data: { user } } = await supabase.auth.getUser();
     const payload = {
       name: companyForm.name,
+      logo_url: companyForm.logo_url || null,
       website: companyForm.website || null,
       industry: companyForm.industry || null,
       description: companyForm.description || null,
@@ -172,18 +187,43 @@ export default function ChannelManager() {
       notes: companyForm.notes || null,
     } as any;
 
+    let companyId: string;
+
     if (editingCompany) {
       const { error } = await supabase.from("social_media_companies").update(payload).eq("id", editingCompany.id);
       if (error) { toast.error("Failed to update company"); return; }
-      toast.success(`${companyForm.name} updated`);
+      companyId = editingCompany.id;
     } else {
       payload.created_by = user?.id;
-      const { error } = await supabase.from("social_media_companies").insert(payload);
-      if (error) { toast.error("Failed to add company"); return; }
-      toast.success(`${companyForm.name} added`);
+      const { data, error } = await supabase.from("social_media_companies").insert(payload).select("id").single();
+      if (error || !data) { toast.error("Failed to add company"); return; }
+      companyId = (data as any).id;
     }
+
+    // Save inline channels — delete old ones for this company and re-insert
+    const validRows = companyChannelRows.filter(r => r.channel_name);
+    if (validRows.length > 0 || editingCompany) {
+      // Remove existing channels for this company
+      await supabase.from("social_media_channels").delete().eq("company_id", companyId);
+
+      if (validRows.length > 0) {
+        const channelInserts = validRows.map(r => ({
+          platform: r.platform,
+          channel_name: r.channel_name,
+          channel_handle: r.channel_handle || null,
+          channel_url: r.channel_url || null,
+          company_id: companyId,
+          created_by: user?.id,
+        }));
+        const { error: chErr } = await supabase.from("social_media_channels").insert(channelInserts as any);
+        if (chErr) { toast.error("Company saved but failed to save some channels"); }
+      }
+    }
+
+    toast.success(`${companyForm.name} ${editingCompany ? "updated" : "added"}`);
     setAddCompanyOpen(false);
     setEditingCompany(null);
+    setCompanyChannelRows([]);
     fetchAll();
   };
 
@@ -284,9 +324,13 @@ export default function ChannelManager() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Building2 className="h-5 w-5 text-primary" />
-                        </div>
+                        {c.logo_url ? (
+                          <img src={c.logo_url} alt={c.name} className="h-10 w-10 rounded-lg object-cover border shrink-0" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Building2 className="h-5 w-5 text-primary" />
+                          </div>
+                        )}
                         <div>
                           <p className="font-medium text-sm">{c.name}</p>
                           <p className="text-xs text-muted-foreground">{channels.filter(ch => ch.company_id === c.id).length} channels</p>
@@ -417,6 +461,13 @@ export default function ChannelManager() {
               <div><Label>Company Name *</Label><Input value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} placeholder="Acme Corp" /></div>
               <div><Label>Contact Person</Label><Input value={companyForm.contact_person} onChange={(e) => setCompanyForm({ ...companyForm, contact_person: e.target.value })} placeholder="John Doe" /></div>
             </div>
+            <div><Label>Logo URL</Label><Input value={companyForm.logo_url} onChange={(e) => setCompanyForm({ ...companyForm, logo_url: e.target.value })} placeholder="https://example.com/logo.png" /></div>
+            {companyForm.logo_url && (
+              <div className="flex items-center gap-3">
+                <img src={companyForm.logo_url} alt="Logo preview" className="h-10 w-10 rounded-lg object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <span className="text-xs text-muted-foreground">Logo preview</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Email</Label><Input type="email" value={companyForm.email} onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })} placeholder="info@company.com" /></div>
               <div><Label>Phone</Label><Input value={companyForm.phone} onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })} placeholder="+880 1XXX-XXXXXX" /></div>
@@ -458,6 +509,36 @@ export default function ChannelManager() {
               </div>
               <div><Label>Monthly Fee (BDT)</Label><Input type="number" value={companyForm.monthly_fee} onChange={(e) => setCompanyForm({ ...companyForm, monthly_fee: e.target.value })} placeholder="0" /></div>
             </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Social Media Channels</h4>
+              <Button type="button" variant="outline" size="sm" onClick={() => setCompanyChannelRows([...companyChannelRows, { platform: "facebook", channel_name: "", channel_handle: "", channel_url: "" }])}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Channel
+              </Button>
+            </div>
+            {companyChannelRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-2">No channels added. Click "Add Channel" to link social pages.</p>
+            ) : (
+              <div className="space-y-3">
+                {companyChannelRows.map((row, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-3 rounded-lg border bg-muted/20">
+                    <div className="grid grid-cols-2 gap-2 flex-1">
+                      <Select value={row.platform} onValueChange={(v) => { const updated = [...companyChannelRows]; updated[idx] = { ...updated[idx], platform: v }; setCompanyChannelRows(updated); }}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>{platformOptions.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input className="h-8 text-xs" value={row.channel_name} onChange={(e) => { const updated = [...companyChannelRows]; updated[idx] = { ...updated[idx], channel_name: e.target.value }; setCompanyChannelRows(updated); }} placeholder="Page / Channel name" />
+                      <Input className="h-8 text-xs" value={row.channel_handle} onChange={(e) => { const updated = [...companyChannelRows]; updated[idx] = { ...updated[idx], channel_handle: e.target.value }; setCompanyChannelRows(updated); }} placeholder="@handle" />
+                      <Input className="h-8 text-xs" value={row.channel_url} onChange={(e) => { const updated = [...companyChannelRows]; updated[idx] = { ...updated[idx], channel_url: e.target.value }; setCompanyChannelRows(updated); }} placeholder="https://..." />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => setCompanyChannelRows(companyChannelRows.filter((_, i) => i !== idx))}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Separator />
             <div><Label>Description</Label><Textarea value={companyForm.description} onChange={(e) => setCompanyForm({ ...companyForm, description: e.target.value })} placeholder="About this client..." rows={2} /></div>
             <div><Label>Notes</Label><Textarea value={companyForm.notes} onChange={(e) => setCompanyForm({ ...companyForm, notes: e.target.value })} placeholder="Internal notes..." rows={2} /></div>
           </div>
