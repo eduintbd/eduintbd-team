@@ -92,6 +92,7 @@ const Email = () => {
 
   // Purelymail password setup
   const [needsPassword, setNeedsPassword] = useState(false);
+  const [passwordChecked, setPasswordChecked] = useState(false);
   const [emailPasswordInput, setEmailPasswordInput] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
 
@@ -110,14 +111,17 @@ const Email = () => {
         setUserEmail(emp.company_email);
         setUserProvider("google");
         setHasAccess(true);
+        setPasswordChecked(true); // google doesn't need a password check
       } else if (emp?.company_email_provider === "purelymail" && emp?.company_email) {
         setUserEmail(emp.company_email);
         setUserProvider("purelymail");
         setHasAccess(true);
+        // passwordChecked will be set after the purelymail password check runs
       } else {
         setUserEmail(emp?.email || null);
         setUserProvider(null);
         setHasAccess(false);
+        setPasswordChecked(true); // no access, no password check needed
       }
       setAccessChecked(true);
     };
@@ -161,8 +165,8 @@ const Email = () => {
   const [replyReferences, setReplyReferences] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
-  // ready = access confirmed, credentials present, provider known
-  const ready = accessChecked && hasAccess && !needsPassword;
+  // ready = access confirmed, password checked, credentials present
+  const ready = accessChecked && passwordChecked && hasAccess && !needsPassword;
 
   // -----------------------------------------------------------------------
   // Fetch profile
@@ -323,7 +327,7 @@ const Email = () => {
     if (accessChecked && userProvider === "purelymail" && hasAccess) {
       const checkPassword = async () => {
         const { data: { user: u } } = await supabase.auth.getUser();
-        if (!u) return;
+        if (!u) { setPasswordChecked(true); return; }
         const { data: emp } = await supabase
           .from("employees")
           .select("purelymail_password")
@@ -332,6 +336,7 @@ const Email = () => {
         if (!(emp as any)?.purelymail_password) {
           setNeedsPassword(true);
         }
+        setPasswordChecked(true);
       };
       checkPassword();
     }
