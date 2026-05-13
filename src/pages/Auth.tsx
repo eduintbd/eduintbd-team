@@ -107,11 +107,11 @@ const Auth = () => {
 
     if (employeeData?.registration_status === "approved" && !employeeData?.onboarding_completed) {
       toast.success("Registration approved! Please complete your onboarding.");
-      navigate("/onboarding");
+      navigate("/onboarding", { replace: true });
       return;
     }
 
-    navigate("/dashboard");
+    navigate("/dashboard", { replace: true });
   };
 
   const handleGoogleUserSetup = async (userId: string, userEmail: string, metadata: any) => {
@@ -173,7 +173,7 @@ const Auth = () => {
 
       if (isWorkspaceUser) {
         toast.success("Welcome! Please complete your onboarding.");
-        navigate("/onboarding");
+        navigate("/onboarding", { replace: true });
       } else {
         toast.info("Account created. Pending admin approval.");
         await supabase.auth.signOut();
