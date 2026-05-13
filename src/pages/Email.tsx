@@ -161,15 +161,19 @@ const Email = () => {
   const [replyReferences, setReplyReferences] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
+  // ready = access confirmed, credentials present, provider known
+  const ready = accessChecked && hasAccess && !needsPassword;
+
   // -----------------------------------------------------------------------
   // Fetch profile
   // -----------------------------------------------------------------------
 
   useEffect(() => {
+    if (!ready) return;
     emailProxy<GmailProfile>("get_profile")
       .then(setProfile)
       .catch((err) => console.error("Failed to load profile", err));
-  }, []);
+  }, [ready, emailProxy]);
 
   // -----------------------------------------------------------------------
   // Fetch threads
@@ -196,16 +200,17 @@ const Email = () => {
         setThreadsLoading(false);
       }
     },
-    [activeLabel, searchQuery]
+    [activeLabel, searchQuery, emailProxy]
   );
 
   useEffect(() => {
+    if (!ready) return;
     setSelectedThreadId(null);
     setMessages([]);
     setThreads([]);
     setNextPageToken(null);
     fetchThreads();
-  }, [fetchThreads]);
+  }, [ready, fetchThreads]);
 
   // -----------------------------------------------------------------------
   // Fetch single thread
