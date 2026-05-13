@@ -33,7 +33,7 @@ interface Employee {
   email_aliases: string[];
   email_active: boolean;
   user_id: string;
-  department?: { name: string } | null;
+  department?: { department_name: string } | null;
   position?: { position_title: string } | null;
 }
 
@@ -78,7 +78,7 @@ const UserManagement = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("employees")
-      .select("*, department:departments(name), position:positions(position_title)")
+      .select("*, department:departments(department_name), position:positions(position_title)")
       .order("employee_code");
 
     if (error) {
