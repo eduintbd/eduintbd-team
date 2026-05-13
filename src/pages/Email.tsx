@@ -90,6 +90,11 @@ const Email = () => {
   const [accessChecked, setAccessChecked] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
 
+  // Purelymail password setup
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [emailPasswordInput, setEmailPasswordInput] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
   useEffect(() => {
     const checkAccess = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,7 +104,7 @@ const Email = () => {
         .from("employees")
         .select("company_email, company_email_provider, email")
         .eq("user_id", user.id)
-        .single();
+        .single() as any;
 
       if (emp?.company_email_provider === "google" && emp?.company_email) {
         setUserEmail(emp.company_email);
@@ -108,7 +113,7 @@ const Email = () => {
       } else if (emp?.company_email_provider === "purelymail" && emp?.company_email) {
         setUserEmail(emp.company_email);
         setUserProvider("purelymail");
-        setHasAccess(true); // Purelymail users get their own IMAP inbox
+        setHasAccess(true);
       } else {
         setUserEmail(emp?.email || null);
         setUserProvider(null);
@@ -309,34 +314,8 @@ const Email = () => {
     fetchThreads();
   };
 
-  // -----------------------------------------------------------------------
-  // Render
-  // -----------------------------------------------------------------------
-
-  const labelTabs = [
-    { label: "Inbox", query: "in:inbox", icon: Inbox },
-    { label: "Sent", query: "in:sent", icon: Send },
-    { label: "Drafts", query: "in:drafts", icon: FileText },
-    { label: "Trash", query: "in:trash", icon: Trash2 },
-  ];
-
-  // Access gate
-  if (!accessChecked) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // Purelymail password setup
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [emailPasswordInput, setEmailPasswordInput] = useState("");
-  const [savingPassword, setSavingPassword] = useState(false);
-
   useEffect(() => {
     if (accessChecked && userProvider === "purelymail" && hasAccess) {
-      // Check if purelymail_password is set
       const checkPassword = async () => {
         const { data: { user: u } } = await supabase.auth.getUser();
         if (!u) return;
@@ -345,7 +324,7 @@ const Email = () => {
           .select("purelymail_password")
           .eq("user_id", u.id)
           .single();
-        if (!emp?.purelymail_password) {
+        if (!(emp as any)?.purelymail_password) {
           setNeedsPassword(true);
         }
       };
@@ -364,7 +343,7 @@ const Email = () => {
 
     const { error } = await supabase
       .from("employees")
-      .update({ purelymail_password: emailPasswordInput })
+      .update({ purelymail_password: emailPasswordInput } as any)
       .eq("user_id", u.id);
 
     if (error) {
@@ -375,6 +354,21 @@ const Email = () => {
     }
     setSavingPassword(false);
   };
+
+  if (!accessChecked) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const labelTabs = [
+    { label: "Inbox", query: "in:inbox", icon: Inbox },
+    { label: "Sent", query: "in:sent", icon: Send },
+    { label: "Drafts", query: "in:drafts", icon: FileText },
+    { label: "Trash", query: "in:trash", icon: Trash2 },
+  ];
 
   if (!hasAccess) {
     return (
