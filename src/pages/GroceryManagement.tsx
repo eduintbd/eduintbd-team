@@ -71,9 +71,9 @@ interface GroceryItem {
   name: string;
   category_id: string | null;
   unit: string;
-  stock: number;
+  current_stock: number;
   min_stock: number;
-  price: number;
+  unit_price: number;
   brand: string | null;
   expiry_date: string | null;
   created_at: string | null;
@@ -96,8 +96,10 @@ interface GroceryOrderItem {
   id: string;
   order_id: string;
   item_id: string;
+  item_name: string;
   quantity: number;
-  price: number;
+  unit_price: number;
+  total_price: number;
   item?: { name: string; unit: string } | null;
 }
 
@@ -334,9 +336,9 @@ const GroceryManagement = () => {
       name: item.name,
       category_id: item.category_id || "",
       unit: item.unit,
-      stock: String(item.stock),
+      stock: String(item.current_stock),
       min_stock: String(item.min_stock),
-      price: String(item.price),
+      price: String(item.unit_price),
       brand: item.brand || "",
       expiry_date: item.expiry_date || "",
     });
@@ -353,9 +355,9 @@ const GroceryManagement = () => {
       name: itemForm.name,
       category_id: itemForm.category_id || null,
       unit: itemForm.unit,
-      stock: Number(itemForm.stock) || 0,
+      current_stock: Number(itemForm.stock) || 0,
       min_stock: Number(itemForm.min_stock) || 0,
-      price: Number(itemForm.price),
+      unit_price: Number(itemForm.price),
       brand: itemForm.brand || null,
       expiry_date: itemForm.expiry_date || null,
     };
@@ -442,7 +444,7 @@ const GroceryManagement = () => {
         order_number: orderNumber,
         order_date: format(new Date(), "yyyy-MM-dd"),
         delivery_date: orderForm.delivery_date || null,
-        status: "pending",
+        status: "draft",
         total_amount: totalAmount,
         is_recurring: orderForm.is_recurring,
         recurrence_interval: orderForm.recurrence_interval || null,
@@ -456,12 +458,17 @@ const GroceryManagement = () => {
       return;
     }
 
-    const lineInserts = validLines.map((l) => ({
-      order_id: (orderData as any).id,
-      item_id: l.item_id,
-      quantity: Number(l.quantity),
-      price: Number(l.price),
-    }));
+    const lineInserts = validLines.map((l) => {
+      const item = items.find((i) => i.id === l.item_id);
+      return {
+        order_id: (orderData as any).id,
+        item_id: l.item_id,
+        item_name: item?.name || "Unknown",
+        quantity: Number(l.quantity),
+        unit_price: Number(l.price),
+        total_price: Number(l.quantity) * Number(l.price),
+      };
+    });
 
     const { error: linesError } = await supabase
       .from("grocery_order_items" as any)
@@ -500,11 +507,12 @@ const GroceryManagement = () => {
   };
 
   const handleSubmitRequest = async () => {
-    if (!requestForm.item_name || !requestForm.requested_by) {
-      toast.error("Item name and requester are required");
+    if (!requestForm.item_name) {
+      toast.error("Item name is required");
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("grocery_staff_requests" as any)
       .insert({
@@ -513,7 +521,7 @@ const GroceryManagement = () => {
         quantity: Number(requestForm.quantity) || 1,
         reason: requestForm.reason || null,
         status: "pending",
-        requested_by: requestForm.requested_by,
+        requested_by: user?.id,
       } as any);
 
     if (error) {
@@ -553,7 +561,7 @@ const GroceryManagement = () => {
   const getCategorySpent = (categoryId: string) => {
     return items
       .filter((i) => i.category_id === categoryId)
-      .reduce((sum, i) => sum + i.price * i.stock, 0);
+      .reduce((sum, i) => sum + i.unit_price * i.current_stock, 0);
   };
 
   // -------------------------------------------------------------------------
@@ -715,7 +723,7 @@ const GroceryManagement = () => {
                         <TableRow
                           key={item.id}
                           className={
-                            item.stock < item.min_stock
+                            item.current_stock < item.min_stock
                               ? "bg-yellow-50"
                               : ""
                           }
@@ -732,14 +740,14 @@ const GroceryManagement = () => {
                           </TableCell>
                           <TableCell>{item.unit}</TableCell>
                           <TableCell className="text-right">
-                            {item.stock}
-                            {item.stock < item.min_stock && (
+                            {item.current_stock}
+                            {item.current_stock < item.min_stock && (
                               <AlertTriangle className="inline h-3 w-3 ml-1 text-yellow-600" />
                             )}
                           </TableCell>
                           <TableCell className="text-right">{item.min_stock}</TableCell>
                           <TableCell className="text-right">
-                            {formatBDT(item.price)}
+                            {formatBDT(item.unit_price)}
                           </TableCell>
                           <TableCell>{item.brand || "-"}</TableCell>
                           <TableCell className={expiryClass(item.expiry_date)}>
@@ -1065,7 +1073,7 @@ const GroceryManagement = () => {
                               )}
                             </TableCell>
                             <TableCell>{item.brand || "-"}</TableCell>
-                            <TableCell className="text-right">{item.stock}</TableCell>
+                            <TableCell className="text-right">{item.current_stock}</TableCell>
                             <TableCell className={expiryClass(item.expiry_date)}>
                               {format(parseISO(item.expiry_date!), "dd MMM yyyy")}
                             </TableCell>
@@ -1309,7 +1317,7 @@ const GroceryManagement = () => {
                       onValueChange={(v) => {
                         updateOrderLine(idx, "item_id", v);
                         const found = items.find((i) => i.id === v);
-                        if (found) updateOrderLine(idx, "price", String(found.price));
+                        if (found) updateOrderLine(idx, "price", String(found.unit_price));
                       }}
                     >
                       <SelectTrigger>
@@ -1465,10 +1473,10 @@ const GroceryManagement = () => {
                           </TableCell>
                           <TableCell className="text-right">{oi.quantity}</TableCell>
                           <TableCell className="text-right">
-                            {formatBDT(oi.price)}
+                            {formatBDT(oi.unit_price)}
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatBDT(oi.quantity * oi.price)}
+                            {formatBDT(oi.total_price)}
                           </TableCell>
                         </TableRow>
                       ))

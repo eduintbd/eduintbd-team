@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Rss,
   Radio,
@@ -13,6 +14,7 @@ import {
   Clock,
   Wifi,
   Heart,
+  LayoutDashboard,
 } from "lucide-react";
 
 import SocialFeed from "@/components/social-media/SocialFeed";
@@ -24,6 +26,40 @@ import PostTemplates from "@/components/social-media/PostTemplates";
 import ContentPipeline from "@/components/social-media/ContentPipeline";
 import UsageTracker from "@/components/social-media/UsageTracker";
 import InvoiceManager from "@/components/social-media/InvoiceManager";
+import SocialMediaDashboard from "@/components/social-media/SocialMediaDashboard";
+
+type SocialMediaView =
+  | "dashboard"
+  | "feed" | "compose" | "templates" | "calendar"
+  | "channels" | "analytics"
+  | "pipeline" | "usage" | "invoices";
+
+const NAV_GROUPS = [
+  {
+    label: "Content",
+    items: [
+      { key: "feed" as const, label: "Feed", icon: Rss },
+      { key: "compose" as const, label: "Compose", icon: PenSquare },
+      { key: "templates" as const, label: "Templates", icon: FileText },
+      { key: "calendar" as const, label: "Calendar", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Management",
+    items: [
+      { key: "channels" as const, label: "Channels", icon: Radio },
+      { key: "analytics" as const, label: "Analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { key: "pipeline" as const, label: "Pipeline", icon: Clock },
+      { key: "usage" as const, label: "Usage", icon: BarChart3 },
+      { key: "invoices" as const, label: "Invoices", icon: FileText },
+    ],
+  },
+];
 
 function formatNumber(n: number) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -32,6 +68,7 @@ function formatNumber(n: number) {
 }
 
 export default function SocialMedia() {
+  const [activeView, setActiveView] = useState<SocialMediaView>("dashboard");
   const [stats, setStats] = useState({
     totalPosts: 0,
     scheduled: 0,
@@ -78,127 +115,78 @@ export default function SocialMedia() {
   }, []);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
+    <div className="container mx-auto py-6 space-y-4">
+      {/* Header with inline stats */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Social Media</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Monitor feeds, manage channels, schedule posts, and track performance.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="gap-1.5 text-xs">
+            <MessageSquare className="h-3 w-3" /> {formatNumber(stats.totalPosts)} Posts
+          </Badge>
+          <Badge variant="secondary" className="gap-1.5 text-xs">
+            <Clock className="h-3 w-3" /> {formatNumber(stats.scheduled)} Scheduled
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 text-xs">
+            <Wifi className="h-3 w-3" /> {stats.activeChannels} Channels
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 text-xs">
+            <Heart className="h-3 w-3" /> {formatNumber(stats.engagement24h)} Engagement
+          </Badge>
+        </div>
+      </div>
+
+      {/* Grouped Navigation */}
+      <nav className="flex items-center gap-1 flex-wrap border rounded-lg p-1.5 bg-muted/30 overflow-x-auto">
+        <Button
+          variant={activeView === "dashboard" ? "secondary" : "ghost"}
+          size="sm"
+          className="gap-1.5 text-xs shrink-0"
+          onClick={() => setActiveView("dashboard")}
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" /> Overview
+        </Button>
+
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="contents">
+            <Separator orientation="vertical" className="h-6 mx-1" />
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1.5 shrink-0">
+              {group.label}
+            </span>
+            {group.items.map((item) => (
+              <Button
+                key={item.key}
+                variant={activeView === item.key ? "secondary" : "ghost"}
+                size="sm"
+                className="gap-1.5 text-xs shrink-0"
+                onClick={() => setActiveView(item.key)}
+              >
+                <item.icon className="h-3.5 w-3.5" /> {item.label}
+              </Button>
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      {/* Content Area */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Social Media Management</h1>
-        <p className="text-muted-foreground mt-1">
-          Monitor social feeds, manage channels, schedule posts, and track performance.
-        </p>
+        {activeView === "dashboard" && (
+          <SocialMediaDashboard stats={stats} onNavigate={(v) => setActiveView(v as SocialMediaView)} />
+        )}
+        {activeView === "feed" && <SocialFeed />}
+        {activeView === "channels" && <ChannelManager />}
+        {activeView === "compose" && <PostComposer />}
+        {activeView === "calendar" && <ContentCalendar />}
+        {activeView === "analytics" && <SocialAnalytics />}
+        {activeView === "templates" && <PostTemplates />}
+        {activeView === "pipeline" && <ContentPipeline />}
+        {activeView === "usage" && <UsageTracker />}
+        {activeView === "invoices" && <InvoiceManager />}
       </div>
-
-      {/* Stats Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats.totalPosts)}</div>
-            <p className="text-xs text-muted-foreground">All tracked posts</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Scheduled</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats.scheduled)}</div>
-            <p className="text-xs text-muted-foreground">Posts awaiting publish</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Channels</CardTitle>
-            <Wifi className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeChannels}</div>
-            <p className="text-xs text-muted-foreground">Connected platforms</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Engagement (24h)</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats.engagement24h)}</div>
-            <p className="text-xs text-muted-foreground">Likes + comments + shares</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="feed" className="space-y-4">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="feed" className="gap-1.5">
-            <Rss className="h-4 w-4" /> Feed
-          </TabsTrigger>
-          <TabsTrigger value="channels" className="gap-1.5">
-            <Radio className="h-4 w-4" /> Channels
-          </TabsTrigger>
-          <TabsTrigger value="compose" className="gap-1.5">
-            <PenSquare className="h-4 w-4" /> Compose
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-1.5">
-            <CalendarDays className="h-4 w-4" /> Calendar
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-1.5">
-            <BarChart3 className="h-4 w-4" /> Analytics
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="gap-1.5">
-            <FileText className="h-4 w-4" /> Templates
-          </TabsTrigger>
-          <TabsTrigger value="pipeline" className="gap-1.5">
-            <Clock className="h-4 w-4" /> Pipeline
-          </TabsTrigger>
-          <TabsTrigger value="usage" className="gap-1.5">
-            <BarChart3 className="h-4 w-4" /> Usage
-          </TabsTrigger>
-          <TabsTrigger value="invoices" className="gap-1.5">
-            <FileText className="h-4 w-4" /> Invoices
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="feed">
-          <SocialFeed />
-        </TabsContent>
-
-        <TabsContent value="channels">
-          <ChannelManager />
-        </TabsContent>
-
-        <TabsContent value="compose">
-          <PostComposer />
-        </TabsContent>
-
-        <TabsContent value="calendar">
-          <ContentCalendar />
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <SocialAnalytics />
-        </TabsContent>
-
-        <TabsContent value="templates">
-          <PostTemplates />
-        </TabsContent>
-
-        <TabsContent value="pipeline">
-          <ContentPipeline />
-        </TabsContent>
-
-        <TabsContent value="usage">
-          <UsageTracker />
-        </TabsContent>
-
-        <TabsContent value="invoices">
-          <InvoiceManager />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
