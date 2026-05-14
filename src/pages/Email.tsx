@@ -111,17 +111,16 @@ const Email = () => {
         setUserEmail(emp.company_email);
         setUserProvider("google");
         setHasAccess(true);
-        setPasswordChecked(true); // google doesn't need a password check
+        setPasswordChecked(true);
       } else if (emp?.company_email_provider === "purelymail" && emp?.company_email) {
         setUserEmail(emp.company_email);
         setUserProvider("purelymail");
         setHasAccess(true);
-        // passwordChecked will be set after the purelymail password check runs
       } else {
         setUserEmail(emp?.email || null);
         setUserProvider(null);
         setHasAccess(false);
-        setPasswordChecked(true); // no access, no password check needed
+        setPasswordChecked(true);
       }
       setAccessChecked(true);
     };
@@ -238,7 +237,7 @@ const Email = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedThreadId]);
+  }, [selectedThreadId, emailProxy]);
 
   // -----------------------------------------------------------------------
   // Actions
