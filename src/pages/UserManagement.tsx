@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Users, Mail, Shield, Plus, Edit2, Copy, Check, ExternalLink,
-  Chrome, Server, Key, UserPlus, Search, MailPlus,
+  Chrome, Server, Key, UserPlus, Search, MailPlus, KeyRound,
 } from "lucide-react";
 
 interface Employee {
@@ -58,6 +58,13 @@ const UserManagement = () => {
   const [emailAliases, setEmailAliases] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState("");
+
+  // Reset password dialog
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [resetEmployee, setResetEmployee] = useState<Employee | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // Add user dialog
   const [addUserOpen, setAddUserOpen] = useState(false);
@@ -201,6 +208,42 @@ const UserManagement = () => {
       toast.error(err.message || "Failed to add user");
     } finally {
       setAddingUser(false);
+    }
+  };
+
+  const openResetPassword = (emp: Employee) => {
+    setResetEmployee(emp);
+    setResetNewPassword("");
+    setResetConfirmPassword("");
+    setResetPasswordOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmployee) return;
+    if (!resetNewPassword || resetNewPassword.length < 12) {
+      toast.error("Password must be at least 12 characters");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      toast.error("Passwords don't match");
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-reset-password", {
+        body: {
+          email: resetEmployee.email,
+          newPassword: resetNewPassword,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Password reset for ${resetEmployee.first_name} ${resetEmployee.last_name}`);
+      setResetPasswordOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reset password");
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -387,7 +430,11 @@ const UserManagement = () => {
                         {emp.registration_status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
+                      <Button variant="outline" size="sm" onClick={() => openResetPassword(emp)}>
+                        <KeyRound className="h-3 w-3 mr-1" />
+                        Reset Password
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => openSetup(emp)}>
                         <Edit2 className="h-3 w-3 mr-1" />
                         {emp.company_email ? "Edit" : "Setup Email"}
@@ -508,6 +555,50 @@ const UserManagement = () => {
             <Button variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveEmail} disabled={saving || !companyEmail}>
               {saving ? "Saving..." : "Save Email Settings"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Reset Password — {resetEmployee?.first_name} {resetEmployee?.last_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Set a new login password for <strong>{resetEmployee?.email}</strong>. The user will need to use this new password on their next login.
+            </p>
+            <div className="space-y-2">
+              <Label>New Password (min 12 characters)</Label>
+              <Input
+                type="password"
+                value={resetNewPassword}
+                onChange={(e) => setResetNewPassword(e.target.value)}
+                placeholder="Enter new password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirm Password</Label>
+              <Input
+                type="password"
+                value={resetConfirmPassword}
+                onChange={(e) => setResetConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPasswordOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={resettingPassword || !resetNewPassword || !resetConfirmPassword}
+            >
+              {resettingPassword ? "Resetting..." : "Reset Password"}
             </Button>
           </DialogFooter>
         </DialogContent>
