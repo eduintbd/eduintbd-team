@@ -33,6 +33,7 @@ import {
   ShoppingBasket,
   Home,
   CreditCard as CreditCardIcon,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,6 +129,7 @@ const AppLayout = () => {
     // Social Media Section
     { icon: Megaphone, label: "Social Media", path: "/social-media", section: "SOCIAL MEDIA" },
     // Operations Section
+    { icon: Monitor, label: "Asset Register", path: "/asset-register", section: "OPERATIONS" },
     { icon: Pencil, label: "Stationary", path: "/stationary", section: "OPERATIONS" },
     { icon: Home, label: "Home & Office", path: "/grocery", section: "OPERATIONS" },
     { icon: CreditCardIcon, label: "Cards", path: "/cards", section: "OPERATIONS" },
