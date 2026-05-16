@@ -276,20 +276,26 @@ export default function ChannelManager() {
     fetchAll();
   };
 
-  const filtered = selectedCompany === "all" ? channels : channels.filter(c => c.company_id === selectedCompany);
+  const filteredCompanies = selectedCompany === "all" ? companies : companies.filter(c => c.id === selectedCompany);
+
+  const clientTypeColors: Record<string, string> = {
+    standard: "bg-gray-100 text-gray-700", premium: "bg-amber-100 text-amber-700",
+    enterprise: "bg-purple-100 text-purple-700", startup: "bg-green-100 text-green-700",
+    agency: "bg-blue-100 text-blue-700",
+  };
 
   if (loading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
 
   return (
     <>
-      {/* Company selector + actions */}
+      {/* Header actions */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <Select value={selectedCompany} onValueChange={setSelectedCompany}>
           <SelectTrigger className="w-[220px]">
             <SelectValue placeholder="All Companies" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Companies ({channels.length})</SelectItem>
+            <SelectItem value="all">All Companies ({companies.length})</SelectItem>
             {companies.map(c => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name} ({channels.filter(ch => ch.company_id === c.id).length})
@@ -307,105 +313,101 @@ export default function ChannelManager() {
         </Button>
       </div>
 
-      {/* Company cards */}
-      {companies.length > 0 && selectedCompany === "all" && (
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">Companies</h3>
-          <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {companies.map(c => {
-              const pkg = packages.find(p => p.id === c.package_id);
-              const clientTypeColors: Record<string, string> = {
-                standard: "bg-gray-100 text-gray-700", premium: "bg-amber-100 text-amber-700",
-                enterprise: "bg-purple-100 text-purple-700", startup: "bg-green-100 text-green-700",
-                agency: "bg-blue-100 text-blue-700",
-              };
-              return (
-                <Card key={c.id} className={`cursor-pointer hover:bg-accent/50 transition-colors ${selectedCompany === c.id ? "ring-2 ring-primary" : ""}`} onClick={() => setSelectedCompany(c.id)}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        {c.logo_url ? (
-                          <img src={c.logo_url} alt={c.name} className="h-10 w-10 rounded-lg object-cover border shrink-0" />
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Building2 className="h-5 w-5 text-primary" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-sm">{c.name}</p>
-                          <p className="text-xs text-muted-foreground">{channels.filter(ch => ch.company_id === c.id).length} channels</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEditCompany(c); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {c.client_type && <Badge className={`text-[10px] ${clientTypeColors[c.client_type] || ""}`}>{c.client_type}</Badge>}
-                      {c.industry && <Badge variant="outline" className="text-[10px]">{c.industry}</Badge>}
-                      {pkg && <Badge variant="outline" className="text-[10px]">{pkg.name}</Badge>}
-                    </div>
-                    {c.contact_person && <p className="text-xs text-muted-foreground mt-1">{c.contact_person}</p>}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          <Separator className="mt-6" />
-        </div>
-      )}
-
-      {/* Channels grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((channel) => {
-          const config = platformConfig[channel.platform] || { icon: <Users className="h-6 w-6" />, color: "text-gray-600", bgClass: "bg-gray-50" };
-          const company = companies.find(c => c.id === channel.company_id);
+      {/* Companies — each listed once with all social links inside */}
+      <div className="space-y-4">
+        {filteredCompanies.map(c => {
+          const companyChannels = channels.filter(ch => ch.company_id === c.id);
+          const pkg = packages.find(p => p.id === c.package_id);
           return (
-            <Card key={channel.id} className="relative">
+            <Card key={c.id}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${config.bgClass} ${config.color}`}>{config.icon}</div>
+                    {c.logo_url ? (
+                      <img src={c.logo_url} alt={c.name} className="h-12 w-12 rounded-lg object-cover border shrink-0" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Building2 className="h-6 w-6 text-primary" />
+                      </div>
+                    )}
                     <div>
-                      <CardTitle className="text-base">{channel.channel_name}</CardTitle>
-                      {channel.channel_handle && <p className="text-xs text-muted-foreground">@{channel.channel_handle}</p>}
+                      <CardTitle className="text-lg">{c.name}</CardTitle>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {c.client_type && <Badge className={`text-[10px] ${clientTypeColors[c.client_type] || ""}`}>{c.client_type}</Badge>}
+                        {c.industry && <Badge variant="outline" className="text-[10px]">{c.industry}</Badge>}
+                        {pkg && <Badge variant="outline" className="text-[10px]">{pkg.name}</Badge>}
+                        <Badge variant="secondary" className="text-[10px]">{companyChannels.length} channels</Badge>
+                      </div>
                     </div>
                   </div>
-                  <Badge variant={channel.is_active ? "default" : "secondary"}>{channel.is_active ? "Active" : "Inactive"}</Badge>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditCompany(c)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setNewChannel({ ...newChannel, company_id: c.id }); setAddChannelOpen(true); }}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
+                {(c.contact_person || c.email || c.phone) && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {[c.contact_person, c.email, c.phone].filter(Boolean).join(" \u00b7 ")}
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
-                {company && (
-                  <Badge variant="outline" className="text-[10px] mb-2">
-                    <Building2 className="h-3 w-3 mr-1" />{company.name}
-                  </Badge>
-                )}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                  <Users className="h-4 w-4" />
-                  <span>{formatFollowers(channel.followers_count)} followers</span>
-                </div>
-                {channel.description && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{channel.description}</p>}
-                <div className="flex items-center gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={() => openEdit(channel)}>
-                    <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteChannel(channel)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <Switch id={`active-${channel.id}`} checked={channel.is_active} onCheckedChange={() => handleToggleActive(channel)} />
+                {companyChannels.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No social channels yet. Click + to add one.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {companyChannels.map((channel) => {
+                      const config = platformConfig[channel.platform] || { icon: <Users className="h-6 w-6" />, color: "text-gray-600", bgClass: "bg-gray-50" };
+                      return (
+                        <div key={channel.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                          <div className={`p-2 rounded-lg shrink-0 ${config.bgClass} ${config.color}`}>
+                            {config.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm truncate">{channel.channel_name}</span>
+                              <Badge variant="outline" className="text-[10px] capitalize shrink-0">{channel.platform}</Badge>
+                              {!channel.is_active && <Badge variant="secondary" className="text-[10px] shrink-0">Inactive</Badge>}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                              {channel.channel_handle && <span>@{channel.channel_handle}</span>}
+                              <span>{formatFollowers(channel.followers_count)} followers</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {channel.channel_url && (
+                              <a href={channel.channel_url} target="_blank" rel="noopener noreferrer">
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              </a>
+                            )}
+                            <Switch className="scale-75" checked={channel.is_active} onCheckedChange={() => handleToggleActive(channel)} />
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(channel)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDeleteChannel(channel)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {channel.channel_url && (
-                    <a href={channel.channel_url} target="_blank" rel="noopener noreferrer">
-                      <Button variant="ghost" size="sm"><ExternalLink className="h-3.5 w-3.5" /></Button>
-                    </a>
-                  )}
-                </div>
+                )}
               </CardContent>
             </Card>
           );
         })}
-        {filtered.length === 0 && <div className="col-span-full text-center py-12 text-muted-foreground">No channels found. Add a channel to get started.</div>}
+        {filteredCompanies.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            No companies found. Click "Add Company" to get started.
+          </div>
+        )}
       </div>
 
       {/* Edit Channel Dialog */}
