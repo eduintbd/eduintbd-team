@@ -38,11 +38,11 @@ interface SocialMediaDashboardProps {
 
 interface ScheduledPost {
   id: string;
-  platform: string;
+  platforms: string[];
   content: string;
   status: string;
   scheduled_at: string | null;
-  campaign_name: string | null;
+  campaign: string | null;
 }
 
 interface ContentTask {
@@ -125,7 +125,7 @@ export default function SocialMediaDashboard({ stats, onNavigate }: SocialMediaD
       const [scheduledRes, tasksRes, channelsRes] = await Promise.all([
         supabase
           .from("social_media_scheduled_posts")
-          .select("id, platform, content, status, scheduled_at, campaign_name")
+          .select("id, platforms, content, status, scheduled_at, campaign")
           .eq("status", "scheduled")
           .order("scheduled_at", { ascending: true })
           .limit(5),
@@ -176,15 +176,19 @@ export default function SocialMediaDashboard({ stats, onNavigate }: SocialMediaD
             <div className="space-y-3">
               {scheduledPosts.map((post) => (
                 <div key={post.id} className="flex items-start gap-2.5">
-                  <div className="mt-0.5">{platformIcon(post.platform)}</div>
+                  <div className="mt-0.5 flex gap-0.5">
+                    {(post.platforms || []).map((pl) => (
+                      <span key={pl}>{platformIcon(pl)}</span>
+                    ))}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm line-clamp-1">{post.content}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       {post.scheduled_at && (
                         <span className="text-xs text-muted-foreground">{relativeTime(post.scheduled_at)}</span>
                       )}
-                      {post.campaign_name && (
-                        <Badge variant="outline" className="text-[10px]">{post.campaign_name}</Badge>
+                      {post.campaign && (
+                        <Badge variant="outline" className="text-[10px]">{post.campaign}</Badge>
                       )}
                     </div>
                   </div>

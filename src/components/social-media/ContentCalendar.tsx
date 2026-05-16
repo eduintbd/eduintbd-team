@@ -13,11 +13,11 @@ import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 
 interface ScheduledPost {
   id: string;
-  platform: string;
+  platforms: string[];
   content: string;
   status: string;
   scheduled_at: string | null;
-  campaign_name: string | null;
+  campaign: string | null;
   hashtags: string[];
   created_at: string;
 }
@@ -200,9 +200,9 @@ export default function ContentCalendar() {
                             <div
                               key={p.id}
                               className={`w-2 h-2 rounded-full ${
-                                platformColors[p.platform] || "bg-gray-400"
+                                platformColors[p.platforms?.[0]] || "bg-gray-400"
                               }`}
-                              title={`${p.platform} - ${p.status}`}
+                              title={`${(p.platforms || []).join(", ")} - ${p.status}`}
                             />
                           ))}
                           {dayPosts.length > 4 && (
@@ -239,20 +239,26 @@ export default function ContentCalendar() {
                 <Card key={post.id}>
                   <CardContent className="py-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          platformColors[post.platform] || "bg-gray-400"
-                        }`}
-                      />
-                      <span className="text-sm font-medium capitalize">{post.platform}</span>
+                      <div className="flex gap-0.5">
+                        {(post.platforms || []).map((pl) => (
+                          <div
+                            key={pl}
+                            className={`w-3 h-3 rounded-full ${
+                              platformColors[pl] || "bg-gray-400"
+                            }`}
+                            title={pl}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium capitalize">{(post.platforms || []).join(", ")}</span>
                       <Badge variant="outline" className={`ml-auto text-xs ${sb.className}`}>
                         {sb.label}
                       </Badge>
                     </div>
                     <p className="text-sm line-clamp-3">{post.content}</p>
-                    {post.campaign_name && (
+                    {post.campaign && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Campaign: {post.campaign_name}
+                        Campaign: {post.campaign}
                       </p>
                     )}
                     {post.scheduled_at && (

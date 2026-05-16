@@ -103,20 +103,32 @@ export default function PostComposer() {
       .map((h) => h.replace(/^#/, "").trim())
       .filter(Boolean);
 
-    // Save one row per platform
-    const rows = selectedPlatforms.map((platform) => ({
-      platform,
-      content: platformOverrides[platform] || content,
+    // Build platform-specific content overrides
+    const platformContent: Record<string, string> = {};
+    for (const pId of selectedPlatforms) {
+      if (platformOverrides[pId]) {
+        platformContent[pId] = platformOverrides[pId];
+      }
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Save a single row with platforms as array
+    const row = {
+      content,
+      platforms: selectedPlatforms,
+      platform_content: Object.keys(platformContent).length > 0 ? platformContent : null,
       hashtags: hashtagArr,
-      campaign_name: campaignName || null,
+      campaign: campaignName || null,
       scheduled_at: scheduledAt,
       status,
       media_urls: [] as string[],
-    }));
+      created_by: user?.id || null,
+    };
 
     const { error } = await supabase
       .from("social_media_scheduled_posts")
-      .insert(rows as any);
+      .insert(row as any);
 
     if (error) {
       toast.error("Failed to save post: " + error.message);
