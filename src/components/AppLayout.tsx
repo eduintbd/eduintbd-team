@@ -119,11 +119,11 @@ const AppLayout = () => {
     { icon: CalendarDays, label: "Calendar", path: "/calendar", section: "PROFILE" },
     // HR Section - visible to all
     { icon: Users, label: "Employees", path: "/employees", section: "HR" },
-    { icon: UserCog, label: "User Management", path: "/user-management", section: "HR", roles: ["admin", "manager"] },
-    { icon: Building2, label: "Departments", path: "/departments", section: "HR", roles: ["admin", "manager"] },
-    { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR", roles: ["admin", "manager"] },
+    { icon: UserCog, label: "User Management", path: "/user-management", section: "HR" },
+    { icon: Building2, label: "Departments", path: "/departments", section: "HR" },
+    { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR" },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
-    { icon: ClipboardList, label: "Task Templates", path: "/task-templates", section: "HR", roles: ["admin", "manager"] },
+    { icon: ClipboardList, label: "Task Templates", path: "/task-templates", section: "HR" },
     // Documents Section
     { icon: FolderOpen, label: "Files", path: "/files", section: "DOCUMENTS" },
     // Social Media Section
@@ -138,31 +138,17 @@ const AppLayout = () => {
     { icon: Boxes, label: "Items Catalog", path: "/procurement/items", section: "PROCUREMENT" },
     { icon: Store, label: "Vendors", path: "/procurement/vendors", section: "PROCUREMENT" },
     { icon: CreditCard, label: "Payments", path: "/procurement/payments", section: "PROCUREMENT" },
-    // Accounting Section - for admin and Finance department
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING", financeDept: true },
-    { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING", financeDept: true },
-    { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING", financeDept: true },
-    { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING", financeDept: true },
-    { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING", financeDept: true },
-    { icon: FileText, label: "Statements", path: "/financial-statements", section: "ACCOUNTING", financeDept: true },
-    { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING", financeDept: true },
+    // Accounting Section
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING" },
+    { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING" },
+    { icon: FileText, label: "Journal Entries", path: "/journal", section: "ACCOUNTING" },
+    { icon: TrendingUp, label: "General Ledger", path: "/ledger", section: "ACCOUNTING" },
+    { icon: TrendingUp, label: "Trial Balance", path: "/trial-balance", section: "ACCOUNTING" },
+    { icon: FileText, label: "Statements", path: "/financial-statements", section: "ACCOUNTING" },
+    { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING" },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => {
-    // Finance department items: admin or Finance dept members
-    if (item.financeDept) {
-      return userRoles.includes('admin') || isFinanceDept;
-    }
-    // Procurement items: visible to admin, procurement_manager, and all authenticated users
-    if (item.section === "PROCUREMENT") {
-      return true;
-    }
-    // Role-based items
-    if (item.roles) {
-      return item.roles.some(role => userRoles.includes(role));
-    }
-    return true; // No restriction
-  });
+  const filteredMenuItems = menuItems;
 
   if (loading) {
     return (
