@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import {
   Save,
   Eye,
   Upload,
+  Zap,
 } from "lucide-react";
 
 const PLATFORMS = [
@@ -35,6 +36,15 @@ const PLATFORMS = [
   { id: "instagram", label: "Instagram", icon: <Camera className="h-4 w-4" />, maxChars: 2200, color: "text-pink-600" },
 ];
 
+interface ConnectedChannel {
+  id: string;
+  platform: string;
+  channel_name: string;
+  company_id: string | null;
+  company_name?: string;
+  external_account_name: string | null;
+}
+
 export default function PostComposer() {
   const [content, setContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -45,6 +55,33 @@ export default function PostComposer() {
   const [scheduleTime, setScheduleTime] = useState("");
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [connectedChannels, setConnectedChannels] = useState<ConnectedChannel[]>([]);
+  const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("social_media_channels")
+        .select("id, platform, channel_name, company_id, social_media_companies(name), social_media_channel_secrets!inner(channel_id, external_account_name)")
+        .eq("is_active", true);
+      if (error || !data) return;
+      const channels: ConnectedChannel[] = data.map((r: any) => ({
+        id: r.id,
+        platform: r.platform,
+        channel_name: r.channel_name,
+        company_id: r.company_id,
+        company_name: r.social_media_companies?.name,
+        external_account_name: r.social_media_channel_secrets?.external_account_name ?? null,
+      }));
+      setConnectedChannels(channels);
+    })();
+  }, []);
+
+  const toggleChannel = (id: string) => {
+    setSelectedChannelIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
 
   const togglePlatform = (id: string) => {
     setSelectedPlatforms((prev) =>
@@ -77,82 +114,152 @@ export default function PostComposer() {
     setMediaFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const savePost = async (status: "draft" | "pending_review" | "scheduled") => {
+  const uploadMedia = async (userId: string | null): Promise<string[]> => {
+    if (mediaFiles.length === 0) return [];
+    const paths: string[] = [];
+    for (const file of mediaFiles) {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${userId ?? "anon"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+      const { error } = await supabase.storage.from("social-media-media").upload(path, file, {
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (error) throw new Error(`Upload failed for ${file.name}: ${error.message}`);
+      paths.push(path);
+    }
+    return paths;
+  };
+
+  const savePost = async (
+    status: "draft" | "pending_review" | "scheduled" | "publish_now",
+  ): Promise<{ id: string; channel_ids: string[] } | null> => {
     if (!content.trim()) {
       toast.error("Content is required");
-      return;
+      return null;
     }
     if (selectedPlatforms.length === 0) {
       toast.error("Select at least one platform");
-      return;
+      return null;
     }
     if (status === "scheduled" && (!scheduleDate || !scheduleTime)) {
       toast.error("Schedule date and time are required");
-      return;
+      return null;
+    }
+    if (status === "publish_now" && selectedPlatforms.includes("facebook") && selectedChannelIds.length === 0) {
+      toast.error("Select at least one Facebook channel to publish to");
+      return null;
     }
 
     setSaving(true);
 
-    const scheduledAt =
-      status === "scheduled" && scheduleDate && scheduleTime
-        ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
-        : null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    const hashtagArr = hashtags
-      .split(/[,\s]+/)
-      .map((h) => h.replace(/^#/, "").trim())
-      .filter(Boolean);
-
-    // Build platform-specific content overrides
-    const platformContent: Record<string, string> = {};
-    for (const pId of selectedPlatforms) {
-      if (platformOverrides[pId]) {
-        platformContent[pId] = platformOverrides[pId];
+      let mediaUrls: string[] = [];
+      try {
+        mediaUrls = await uploadMedia(user?.id ?? null);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Media upload failed");
+        return null;
       }
-    }
 
-    const { data: { user } } = await supabase.auth.getUser();
+      const scheduledAt =
+        status === "scheduled" && scheduleDate && scheduleTime
+          ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
+          : status === "publish_now"
+            ? new Date().toISOString()
+            : null;
 
-    // Save a single row with platforms as array
-    const row = {
-      content,
-      platforms: selectedPlatforms,
-      platform_content: Object.keys(platformContent).length > 0 ? platformContent : null,
-      hashtags: hashtagArr,
-      campaign: campaignName || null,
-      scheduled_at: scheduledAt,
-      status,
-      media_urls: [] as string[],
-      created_by: user?.id || null,
-    };
+      const hashtagArr = hashtags
+        .split(/[,\s]+/)
+        .map((h) => h.replace(/^#/, "").trim())
+        .filter(Boolean);
 
-    const { error } = await supabase
-      .from("social_media_scheduled_posts")
-      .insert(row as any);
+      const platformContent: Record<string, string> = {};
+      for (const pId of selectedPlatforms) {
+        if (platformOverrides[pId]) platformContent[pId] = platformOverrides[pId];
+      }
 
-    if (error) {
-      toast.error("Failed to save post: " + error.message);
+      const dbStatus = status === "publish_now" ? "scheduled" : status;
+      const row = {
+        content,
+        platforms: selectedPlatforms,
+        channel_ids: selectedChannelIds,
+        platform_content: Object.keys(platformContent).length > 0 ? platformContent : null,
+        hashtags: hashtagArr,
+        campaign: campaignName || null,
+        scheduled_at: scheduledAt,
+        status: dbStatus,
+        media_urls: mediaUrls,
+        created_by: user?.id || null,
+      };
+
+      const { data, error } = await supabase
+        .from("social_media_scheduled_posts")
+        .insert(row as any)
+        .select("id, channel_ids")
+        .single();
+
+      if (error || !data) {
+        toast.error("Failed to save post: " + (error?.message ?? "no row returned"));
+        return null;
+      }
+
+      if (status !== "publish_now") {
+        const labels: Record<string, string> = {
+          draft: "Saved as draft",
+          pending_review: "Submitted for review",
+          scheduled: "Post scheduled",
+        };
+        toast.success(labels[status]);
+        resetForm();
+      }
+
+      return { id: (data as any).id, channel_ids: (data as any).channel_ids ?? [] };
+    } finally {
       setSaving(false);
-      return;
     }
+  };
 
-    const statusLabels: Record<string, string> = {
-      draft: "Saved as draft",
-      pending_review: "Submitted for review",
-      scheduled: "Post scheduled",
-    };
-    toast.success(statusLabels[status] || "Post saved");
-
-    // Reset form
+  const resetForm = () => {
     setContent("");
     setSelectedPlatforms([]);
+    setSelectedChannelIds([]);
     setPlatformOverrides({});
     setHashtags("");
     setCampaignName("");
     setScheduleDate("");
     setScheduleTime("");
     setMediaFiles([]);
-    setSaving(false);
+  };
+
+  const publishNow = async () => {
+    const saved = await savePost("publish_now");
+    if (!saved) return;
+
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("publish-facebook-post", {
+        body: { scheduled_post_id: saved.id, channel_ids: saved.channel_ids },
+      });
+      if (error) {
+        toast.error("Publish failed: " + error.message);
+        return;
+      }
+      const summary = data?.summary;
+      const results = (data?.results ?? []) as { channel_id: string; status: string; error?: string }[];
+      if (summary?.success > 0 && summary?.failed === 0) {
+        toast.success(`Published to ${summary.success} channel${summary.success === 1 ? "" : "s"}`);
+        resetForm();
+      } else if (summary?.success > 0) {
+        toast.warning(`Published to ${summary.success}, ${summary.failed} failed`);
+        results.filter((r) => r.status === "failed").forEach((r) => toast.error(`Channel ${r.channel_id}: ${r.error}`));
+      } else {
+        results.forEach((r) => toast.error(`${r.channel_id}: ${r.error ?? "failed"}`));
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -366,6 +473,48 @@ export default function PostComposer() {
           </CardContent>
         </Card>
 
+        {/* Connected channels — destination picker */}
+        {selectedPlatforms.length > 0 && (() => {
+          const eligible = connectedChannels.filter((c) => selectedPlatforms.includes(c.platform));
+          if (eligible.length === 0) {
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Destinations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground">
+                    No connected channels for the selected platform(s). Connect a Facebook page from <b>Channel Manager</b> first.
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          }
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Destinations</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {eligible.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`channel-${c.id}`}
+                      checked={selectedChannelIds.includes(c.id)}
+                      onCheckedChange={() => toggleChannel(c.id)}
+                    />
+                    <label htmlFor={`channel-${c.id}`} className="text-sm cursor-pointer flex-1 truncate">
+                      <span className="capitalize text-xs text-muted-foreground">{c.platform}</span>{" "}
+                      {c.external_account_name ?? c.channel_name}
+                      {c.company_name && <span className="text-xs text-muted-foreground"> &middot; {c.company_name}</span>}
+                    </label>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* Status Workflow */}
         <Card>
           <CardHeader>
@@ -385,6 +534,14 @@ export default function PostComposer() {
             </div>
             <Separator />
             <div className="space-y-2">
+              <Button
+                className="w-full justify-start"
+                onClick={publishNow}
+                disabled={saving || !selectedPlatforms.includes("facebook") || selectedChannelIds.length === 0}
+                title={!selectedPlatforms.includes("facebook") ? "Publish Now currently supports Facebook only" : selectedChannelIds.length === 0 ? "Select at least one channel" : ""}
+              >
+                <Zap className="h-4 w-4 mr-2" /> Publish Now (Facebook)
+              </Button>
               <Button
                 variant="outline"
                 className="w-full justify-start"

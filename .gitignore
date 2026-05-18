@@ -9,3 +9,4 @@ android/
 ios/
 *.tsbuildinfo
 .claude/
+supabase/.temp/

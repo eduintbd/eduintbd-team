@@ -1,4 +1,4 @@
-project_id = "iuiyykwfzuhlfdzrcvfm"
+project_id = "pkzpesnwfsgfhtyswtit"
 
 [functions.send-welcome-email]
 verify_jwt = false
@@ -22,4 +22,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.fix-account-link]
+verify_jwt = false
+
+[functions.facebook-oauth-start]
+verify_jwt = true
+
+[functions.facebook-oauth-callback]
+verify_jwt = false
+
+[functions.publish-facebook-post]
+verify_jwt = true
+
+[functions.dispatch-scheduled-posts]
 verify_jwt = false

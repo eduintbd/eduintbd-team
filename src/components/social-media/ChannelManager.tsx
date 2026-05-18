@@ -31,6 +31,8 @@ import {
   Plus,
   Building2,
   Trash2,
+  CheckCircle2,
+  Link2,
 } from "lucide-react";
 
 interface Package {
@@ -110,6 +112,10 @@ export default function ChannelManager() {
   // Packages
   const [packages, setPackages] = useState<Package[]>([]);
 
+  // Connected channel credentials (Facebook OAuth, etc.) — secrets are never returned, only metadata
+  const [connections, setConnections] = useState<Record<string, { external_account_id: string; external_account_name: string | null; last_verified_at: string | null; provider: string }>>({});
+  const [connectingChannelId, setConnectingChannelId] = useState<string | null>(null);
+
   // Add/Edit company
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -130,15 +136,72 @@ export default function ChannelManager() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [{ data: compData }, { data: chanData }, { data: pkgData }] = await Promise.all([
+    const [{ data: compData }, { data: chanData }, { data: pkgData }, { data: connData }] = await Promise.all([
       supabase.from("social_media_companies").select("*").order("name"),
       supabase.from("social_media_channels").select("*").order("platform"),
       supabase.from("social_media_packages").select("*").order("price"),
+      // Column GRANT denies authenticated role from selecting the token columns;
+      // only metadata comes back. Edge functions read the token via service role.
+      (supabase as any).from("social_media_channel_secrets").select("channel_id, provider, external_account_id, external_account_name, last_verified_at"),
     ]);
     setCompanies((compData || []) as any);
     setChannels((chanData || []) as any);
     setPackages((pkgData || []) as any);
+    const map: typeof connections = {};
+    for (const row of (connData || []) as any[]) {
+      map[row.channel_id] = {
+        external_account_id: row.external_account_id,
+        external_account_name: row.external_account_name,
+        last_verified_at: row.last_verified_at,
+        provider: row.provider,
+      };
+    }
+    setConnections(map);
     setLoading(false);
+  };
+
+  const handleConnectFacebook = async (channel: SocialChannel) => {
+    setConnectingChannelId(channel.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("facebook-oauth-start", {
+        body: { channel_id: channel.id },
+      });
+      if (error || !data?.url) {
+        toast.error("Could not start Facebook login: " + (error?.message || "no URL returned"));
+        return;
+      }
+      const w = window.open(data.url, "fb-oauth", "width=620,height=720");
+      if (!w) {
+        toast.error("Popup blocked. Allow popups for this site and try again.");
+        return;
+      }
+      const onMessage = (ev: MessageEvent) => {
+        if (ev.data?.type === "fb-oauth-success") {
+          toast.success(`Connected ${channel.channel_name} to Facebook`);
+          window.removeEventListener("message", onMessage);
+          fetchAll();
+        } else if (ev.data?.type === "fb-oauth-error") {
+          window.removeEventListener("message", onMessage);
+        }
+      };
+      window.addEventListener("message", onMessage);
+    } finally {
+      setConnectingChannelId(null);
+    }
+  };
+
+  const handleDisconnectFacebook = async (channel: SocialChannel) => {
+    if (!confirm(`Disconnect ${channel.channel_name} from Facebook? Scheduled posts to this channel will fail until reconnected.`)) return;
+    const { error } = await (supabase as any)
+      .from("social_media_channel_secrets")
+      .delete()
+      .eq("channel_id", channel.id);
+    if (error) {
+      toast.error("Failed to disconnect: " + error.message);
+      return;
+    }
+    toast.success(`Disconnected ${channel.channel_name}`);
+    fetchAll();
   };
 
   const openAddCompany = () => {
@@ -379,6 +442,31 @@ export default function ChannelManager() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
+                            {channel.platform === "facebook" && (
+                              connections[channel.id] ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1 text-green-600 hover:text-green-700"
+                                  onClick={() => handleDisconnectFacebook(channel)}
+                                  title={`Connected to ${connections[channel.id].external_account_name ?? connections[channel.id].external_account_id}. Click to disconnect.`}
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <span className="text-xs">Connected</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 gap-1"
+                                  disabled={connectingChannelId === channel.id}
+                                  onClick={() => handleConnectFacebook(channel)}
+                                >
+                                  <Link2 className="h-3.5 w-3.5" />
+                                  <span className="text-xs">{connectingChannelId === channel.id ? "Opening..." : "Connect"}</span>
+                                </Button>
+                              )
+                            )}
                             {channel.channel_url && (
                               <a href={channel.channel_url} target="_blank" rel="noopener noreferrer">
                                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
