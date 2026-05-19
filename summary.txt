@@ -1,0 +1,153 @@
+Session Summary — 2026-05-13/14
+================================
+
+BUGS FIXED
+----------
+
+1. /email white page (React hooks violation)
+   - useState and useEffect hooks were declared after a conditional early return
+   - Moved all hooks to top of Email component before any conditional returns
+   - File: src/pages/Email.tsx
+
+2. Back button from /dashboard navigating to /careers
+   - Post-login navigations used push instead of replace, polluting history
+   - Fixed: navigate("/dashboard", { replace: true }) in Auth.tsx
+   - Fixed: navigate("/careers", { replace: true }) in Index.tsx
+   - Files: src/pages/Auth.tsx, src/pages/Index.tsx
+
+3. After onboarding, redirect went to / (careers) instead of /dashboard
+   - Onboarding.tsx was calling navigate("/") after completion
+   - Fixed to navigate("/dashboard", { replace: true })
+   - File: src/pages/Onboarding.tsx
+
+4. Login with completed onboarding redirecting to /onboarding
+   - onboarding_completed was false for all users in the database
+   - Fixed via SQL: UPDATE employees SET onboarding_completed = true, status = 'active'
+
+5. User Management "Failed to load employees" (400 error)
+   - Query used departments(name) but column is department_name
+   - Query used positions(title) but column is position_title
+   - Fixed both column names in the select query and Employee interface
+   - File: src/pages/UserManagement.tsx
+
+6. Email proxy called before credentials were ready (race condition)
+   - get_profile and fetchThreads fired before password check completed
+   - Added passwordChecked state — ready flag now waits for both
+     accessChecked AND passwordChecked before calling any proxy
+   - File: src/pages/Email.tsx
+
+DATABASE CHANGES (run manually in Supabase SQL Editor)
+------------------------------------------------------
+
+1. Added email management columns to employees table:
+   ALTER TABLE employees ADD COLUMN IF NOT EXISTS email_provider text DEFAULT 'password';
+   ALTER TABLE employees ADD COLUMN IF NOT EXISTS company_email_provider text;
+   ALTER TABLE employees ADD COLUMN IF NOT EXISTS purelymail_password text;
+   ALTER TABLE employees ADD COLUMN IF NOT EXISTS email_aliases text[] DEFAULT '{}';
+   ALTER TABLE employees ADD COLUMN IF NOT EXISTS email_active boolean DEFAULT true;
+
+2. Set onboarding complete for all users:
+   UPDATE employees SET onboarding_completed = true, status = 'active'
+   WHERE onboarding_completed = false OR onboarding_completed IS NULL;
+
+3. Set up Purelymail email for sharraf@eduintbd.com:
+   UPDATE employees
+   SET company_email = 'sharraf@eduintbd.com', company_email_provider = 'purelymail'
+   WHERE email = 'sharraf@eduintbd.com';
+
+PENDING
+-------
+- sharraf@eduintbd.com still needs to enter Purelymail password on /email page
+  (the "Connect Your Email" screen will appear after Vercel redeploys latest fix)
+- Vercel login needed for manual deploys (currently relying on GitHub auto-deploy)
+
+---
+
+Session Summary — 2026-05-14
+================================
+
+BUG INVESTIGATED
+----------------
+
+1. sharraf@eduintbd.com seeing syed@eduintbd.com's emails on /email page
+   - Root cause: gmail-proxy (supabase/functions/gmail-proxy/index.ts) uses a single
+     hardcoded GOOGLE_REFRESH_TOKEN from env vars — no per-user lookup.
+     Any employee with company_email_provider = "google" calls this proxy and gets
+     whoever's token is in GOOGLE_REFRESH_TOKEN (syed's Google account).
+   - purelymail-proxy is correctly implemented: it looks up company_email and
+     purelymail_password by user_id before connecting to IMAP.
+   - Since sharraf's row in employees already has company_email_provider = 'purelymail'
+     (set in previous session), the actual fix is to confirm the DB value is correct
+     and that sharraf enters their Purelymail password on the Connect Your Email screen.
+
+   Fix options if gmail-proxy needs to be multi-user in the future:
+   A. Per-user token: add google_refresh_token column to employees, look it up by
+      user_id in gmail-proxy (same pattern as purelymail-proxy).
+   B. Google Workspace service account with domain-wide delegation: pass
+      sub = emp.company_email in the JWT to impersonate each user.
+   C. If a user should NOT use Google, ensure company_email_provider = 'purelymail'
+      in the employees table (already done for sharraf).
+
+---
+
+Session Summary — 2026-05-19
+================================
+
+BUGS FIXED
+----------
+
+1. Facebook OAuth connect failing for non-connected channels (e.g. Sunshine's collection)
+   - Root cause: FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_OAUTH_STATE_SECRET,
+     and DISPATCHER_SECRET were not set in Supabase edge function secrets.
+   - Fix: set all four secrets via Supabase dashboard / CLI.
+   - Functions: facebook-oauth-start, facebook-oauth-callback, dispatch-scheduled-posts
+
+2. Email — sharraf's inbox failing with generic "non-2xx" error
+   - Root cause: wrong Purelymail password stored in employees table.
+   - Fix: reset via User Management → sharraf → Edit Email → re-enter correct password.
+   - Also improved emailProxy error handling to surface real server error instead of generic message.
+   - File: src/pages/Email.tsx
+
+3. Email — mahedi's sender showing "unknown"
+   - Root cause: IMAP ENVELOPE FROM regex only matched quoted display names;
+     failed silently when name was NIL (no display name).
+   - Fix: updated regex to handle both ("Name" NIL "user" "host") and (NIL NIL "user" "host").
+   - File: supabase/functions/purelymail-proxy/index.ts
+
+4. Email — mahedi's email body always empty
+   - Root cause: SimpleImapClient.sendCommand only collected lines starting with "*";
+     IMAP literal body content (sent after a {N} size marker) was silently discarded.
+   - Fix: added readLiteral(size) method; sendCommand now detects {N} at end of line
+     and reads the following N chars as literal data.
+   - File: supabase/functions/purelymail-proxy/index.ts
+
+5. Email — get_thread crashing after attachment support added
+   - Root cause: used Promise.all for three sequential IMAP commands on the same
+     connection — commands interleaved and corrupted each other's responses.
+   - Fix: run fetchHeaders, fetchBody, fetchBodyStructure sequentially (await each).
+   - File: supabase/functions/purelymail-proxy/index.ts
+
+FEATURES ADDED
+--------------
+
+1. Email attachment support (purelymail)
+   - Backend: get_thread now fetches BODYSTRUCTURE and parses attachment filenames/
+     content-types; new get_attachment action fetches a specific MIME part by number.
+   - Frontend: attachment chips shown below email body; clicking downloads the file.
+   - Files: supabase/functions/purelymail-proxy/index.ts, src/pages/Email.tsx
+
+PENDING / FUTURE WORK
+---------------------
+
+1. Google OAuth per-user token flow (Option 2 — ~2-3 hrs work)
+   - Current gmail-proxy uses a single shared GOOGLE_REFRESH_TOKEN secret.
+     All Google-provider users share one inbox (whoever's token is stored).
+   - Temporary fix: publish the Google OAuth app (Cloud Console → OAuth consent screen
+     → Testing → Published) so the shared refresh token does not expire every 7 days.
+   - Proper fix: implement per-user Google OAuth flow (same pattern as Facebook):
+     a. New google-oauth-start edge function — generates Google OAuth URL per user
+     b. New google-oauth-callback edge function — stores refresh token per user in DB
+     c. Update gmail-proxy to read token by user_id instead of from env secret
+     d. Add google_refresh_token column to employees table
+     e. Add "Connect Google Account" button in Email page (shown when no token stored)
+   - Estimated effort: 2-3 hours
