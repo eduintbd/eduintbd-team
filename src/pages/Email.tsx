@@ -142,7 +142,16 @@ const Email = () => {
     const { data, error } = await supabase.functions.invoke(functionName, {
       body: { action, ...params },
     });
-    if (error) throw error;
+    if (error) {
+      // Extract the real server-side error message from the response body
+      try {
+        const body = await (error as any).context?.json?.();
+        if (body?.error) throw new Error(body.error);
+      } catch (inner) {
+        if ((inner as Error) !== error) throw inner;
+      }
+      throw error;
+    }
     return data as T;
   }, [userProvider]);
 
