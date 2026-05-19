@@ -347,11 +347,9 @@ serve(async (req) => {
         await client.select(params.mailbox || "INBOX");
 
         const uid = parseInt(params.threadId);
-        const [headers, body, bsRaw] = await Promise.all([
-          client.fetchHeaders(uid),
-          client.fetchBody(uid),
-          client.fetchBodyStructure(uid),
-        ]);
+        const headers = await client.fetchHeaders(uid);
+        const body = await client.fetchBody(uid);
+        const bsRaw = await client.fetchBodyStructure(uid);
         const attachments = parseAttachments(bsRaw);
 
         await client.logout();
