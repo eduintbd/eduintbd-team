@@ -38,6 +38,18 @@ class SimpleImapClient {
     return line;
   }
 
+  private async readLiteral(size: number): Promise<string> {
+    const decoder = new TextDecoder();
+    while (this.buffer.length < size) {
+      const { value, done } = await this.reader!.read();
+      if (done) break;
+      this.buffer += decoder.decode(value);
+    }
+    const literal = this.buffer.substring(0, size);
+    this.buffer = this.buffer.substring(size);
+    return literal;
+  }
+
   private async sendCommand(command: string): Promise<{ status: string; data: string[] }> {
     const tag = `A${++this.tagCounter}`;
     const fullCommand = `${tag} ${command}\r\n`;
@@ -54,6 +66,12 @@ class SimpleImapClient {
         break;
       } else if (line.startsWith("*")) {
         data.push(line);
+        // IMAP literal: line ends with {N} — read the next N chars as raw content
+        const literalMatch = line.match(/\{(\d+)\}$/);
+        if (literalMatch) {
+          const literalData = await this.readLiteral(parseInt(literalMatch[1]));
+          data.push(literalData);
+        }
       }
     }
     return { status, data };
@@ -92,9 +110,10 @@ class SimpleImapClient {
 
     let from = "unknown";
     let fromName = "";
-    const fromMatch = joined.match(/\(\("([^"]*)" NIL "([^"]*)" "([^"]*)"\)\)/);
+    // Handles both (("Name" NIL "user" "host")) and ((NIL NIL "user" "host"))
+    const fromMatch = joined.match(/\(\((?:"((?:[^"\\]|\\.)*)"|NIL) NIL "([^"]*)" "([^"]*)"\)\)/i);
     if (fromMatch) {
-      fromName = fromMatch[1] || fromMatch[2];
+      fromName = fromMatch[1] || "";
       from = `${fromMatch[2]}@${fromMatch[3]}`;
     }
 
@@ -109,10 +128,22 @@ class SimpleImapClient {
 
   async fetchBody(uid: number): Promise<string> {
     const res = await this.sendCommand(`FETCH ${uid} (BODY[TEXT])`);
-    const joined = res.data.join("\n");
-    const bodyStart = joined.indexOf("}");
-    if (bodyStart === -1) return "";
-    return joined.substring(bodyStart + 1).trim().slice(0, 10000);
+    // After the literal fix, data[1] is the raw body content captured by readLiteral
+    if (res.data.length >= 2) {
+      return res.data[1].trim().slice(0, 10000);
+    }
+    return "";
+  }
+
+  async fetchBodyStructure(uid: number): Promise<string> {
+    const res = await this.sendCommand(`FETCH ${uid} (BODYSTRUCTURE)`);
+    return res.data.join(" ");
+  }
+
+  async fetchPart(uid: number, partNum: string): Promise<string> {
+    const res = await this.sendCommand(`FETCH ${uid} (BODY.PEEK[${partNum}])`);
+    // data[1] is the literal content captured by readLiteral
+    return res.data.length >= 2 ? res.data[1] : "";
   }
 
   async store(uid: number, flags: string): Promise<void> {
@@ -125,6 +156,50 @@ class SimpleImapClient {
       this.conn?.close();
     } catch { /* ignore */ }
   }
+}
+
+interface AttachmentInfo {
+  filename: string;
+  partNum: string;
+  contentType: string;
+}
+
+function parseAttachments(bodyStructure: string): AttachmentInfo[] {
+  const attachments: AttachmentInfo[] = [];
+  const seen = new Set<string>();
+
+  // Match non-text parts that carry a filename: "type" "subtype" ... ("name" "file.ext")
+  const partRe = /"(application|image|audio|video)"\s+"([^"]+)"[^)]*"(?:name|filename)"\s+"([^"]+)"/gi;
+  let match;
+  let partNum = 2; // text body is part 1; attachments start at 2
+
+  while ((match = partRe.exec(bodyStructure)) !== null) {
+    const filename = match[3];
+    const key = filename.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      attachments.push({
+        filename,
+        partNum: String(partNum++),
+        contentType: `${match[1]}/${match[2]}`.toLowerCase(),
+      });
+    }
+  }
+
+  // Fallback: any "name"/"filename" value not already caught
+  if (attachments.length === 0) {
+    const fallbackRe = /"(?:name|filename)"\s+"([^"]+)"/gi;
+    while ((match = fallbackRe.exec(bodyStructure)) !== null) {
+      const filename = match[1];
+      const key = filename.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        attachments.push({ filename, partNum: String(partNum++), contentType: "application/octet-stream" });
+      }
+    }
+  }
+
+  return attachments;
 }
 
 // Simple SMTP send via TLS
@@ -272,8 +347,12 @@ serve(async (req) => {
         await client.select(params.mailbox || "INBOX");
 
         const uid = parseInt(params.threadId);
-        const headers = await client.fetchHeaders(uid);
-        const body = await client.fetchBody(uid);
+        const [headers, body, bsRaw] = await Promise.all([
+          client.fetchHeaders(uid),
+          client.fetchBody(uid),
+          client.fetchBodyStructure(uid),
+        ]);
+        const attachments = parseAttachments(bsRaw);
 
         await client.logout();
         result = {
@@ -285,9 +364,24 @@ serve(async (req) => {
             to: headers.to,
             date: headers.date,
             body,
+            attachments,
             isUnread: false,
           }],
         };
+        break;
+      }
+
+      case "get_attachment": {
+        const client = new SimpleImapClient();
+        await client.connect();
+        await client.login(imapEmail, imapPassword);
+        await client.select(params.mailbox || "INBOX");
+
+        const uid = parseInt(params.threadId);
+        const content = await client.fetchPart(uid, params.partNum);
+
+        await client.logout();
+        result = { content, contentType: params.contentType || "application/octet-stream" };
         break;
       }
 

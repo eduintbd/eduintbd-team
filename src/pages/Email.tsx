@@ -30,6 +30,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Paperclip,
+  Download,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,12 @@ interface GmailThread {
   isUnread: boolean;
 }
 
+interface EmailAttachment {
+  filename: string;
+  partNum: string;
+  contentType: string;
+}
+
 interface GmailMessage {
   id: string;
   subject: string;
@@ -52,6 +60,7 @@ interface GmailMessage {
   to: string;
   date: string;
   body: string;
+  attachments?: EmailAttachment[];
   isUnread: boolean;
 }
 
@@ -315,6 +324,27 @@ const Email = () => {
     setReplyInReplyTo(msg.id);
     setReplyReferences(msg.id);
     setComposeOpen(true);
+  };
+
+  const handleDownloadAttachment = async (msg: GmailMessage, att: EmailAttachment) => {
+    try {
+      const res = await emailProxy<{ content: string; contentType: string }>(
+        "get_attachment",
+        { threadId: msg.id, partNum: att.partNum, contentType: att.contentType }
+      );
+      const binary = atob(res.content.replace(/\s/g, ""));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: res.contentType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = att.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error("Failed to download attachment: " + err.message);
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -585,6 +615,27 @@ const Email = () => {
                           className="prose prose-sm max-w-none dark:prose-invert break-words"
                           dangerouslySetInnerHTML={{ __html: msg.body }}
                         />
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-4 border-t pt-3">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                              <Paperclip className="h-3.5 w-3.5" />
+                              {msg.attachments.length} attachment{msg.attachments.length > 1 ? "s" : ""}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {msg.attachments.map((att) => (
+                                <button
+                                  key={att.partNum}
+                                  onClick={() => handleDownloadAttachment(msg, att)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs hover:bg-accent transition-colors"
+                                >
+                                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="max-w-[180px] truncate">{att.filename}</span>
+                                  <Download className="h-3 w-3 text-muted-foreground" />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="mt-4 flex justify-end">
                           <Button variant="outline" size="sm" onClick={() => openReply(msg)}>
                             <Send className="h-3.5 w-3.5 mr-1" />
