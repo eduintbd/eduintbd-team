@@ -136,14 +136,28 @@ FEATURES ADDED
    - Frontend: attachment chips shown below email body; clicking downloads the file.
    - Files: supabase/functions/purelymail-proxy/index.ts, src/pages/Email.tsx
 
+BUGS FIXED (continued — 2026-05-20)
+------------------------------------
+
+6. Email — admin (Google user) inbox failing with "invalid_grant: Token has been expired or revoked"
+   - Root cause: GOOGLE_REFRESH_TOKEN stored in Supabase secrets had been revoked.
+     gmail-proxy uses a single shared refresh token for all Google-provider users.
+   - Investigation: Google OAuth app is set to Internal (Google Workspace org only),
+     so the 7-day testing-mode expiry does NOT apply — token was a one-off revocation.
+   - Fix: generated a new refresh token via OAuth Playground (developers.google.com/oauthplayground)
+     using the app's GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (found under Auth Platform → Clients),
+     then updated the secret:
+     npx supabase secrets set GOOGLE_REFRESH_TOKEN=<token> --project-ref pkzpesnwfsgfhtyswtit
+   - Note: also had to add https://developers.google.com/oauthplayground to the OAuth client's
+     authorized redirect URIs to allow Playground to work.
+
 PENDING / FUTURE WORK
 ---------------------
 
 1. Google OAuth per-user token flow (Option 2 — ~2-3 hrs work)
    - Current gmail-proxy uses a single shared GOOGLE_REFRESH_TOKEN secret.
      All Google-provider users share one inbox (whoever's token is stored).
-   - Temporary fix: publish the Google OAuth app (Cloud Console → OAuth consent screen
-     → Testing → Published) so the shared refresh token does not expire every 7 days.
+   - Token won't expire on its own (Internal app) but will break again if revoked.
    - Proper fix: implement per-user Google OAuth flow (same pattern as Facebook):
      a. New google-oauth-start edge function — generates Google OAuth URL per user
      b. New google-oauth-callback edge function — stores refresh token per user in DB
