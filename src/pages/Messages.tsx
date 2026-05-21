@@ -223,17 +223,59 @@ const Messages = () => {
 
       return message;
     },
+    onMutate: async () => {
+      // Capture form values before they are cleared
+      const optimisticSubject = subject;
+      const optimisticBody = body;
+      const optimisticSender = currentEmployee;
+
+      // Cancel any in-flight refetches so they don't overwrite the optimistic entry
+      await queryClient.cancelQueries({ queryKey: ["sent-messages", currentEmployee?.id] });
+
+      // Snapshot for rollback
+      const previousSent = queryClient.getQueryData<Message[]>(["sent-messages", currentEmployee?.id]);
+
+      const optimisticMessage: Message = {
+        id: `optimistic-${Date.now()}`,
+        subject: optimisticSubject,
+        body: optimisticBody,
+        created_at: new Date().toISOString(),
+        is_read: true,
+        is_starred: false,
+        sender: {
+          id: optimisticSender?.id ?? "",
+          first_name: optimisticSender?.first_name ?? "",
+          last_name: optimisticSender?.last_name ?? "",
+          email: "",
+        },
+      };
+
+      queryClient.setQueryData<Message[]>(
+        ["sent-messages", currentEmployee?.id],
+        (old) => [optimisticMessage, ...(old ?? [])]
+      );
+
+      return { previousSent };
+    },
     onSuccess: () => {
       toast.success("Message sent successfully");
       setComposeOpen(false);
       setRecipientId("");
       setSubject("");
       setBody("");
+      setActiveTab("sent");
+    },
+    onError: (error, _variables, context) => {
+      // Roll back the optimistic entry so the list is consistent
+      if (context?.previousSent !== undefined) {
+        queryClient.setQueryData(["sent-messages", currentEmployee?.id], context.previousSent);
+      }
+      toast.error("Failed to send message: " + error.message);
+    },
+    onSettled: () => {
+      // Always reconcile with the server (replaces the temp optimistic id with the real one)
       queryClient.invalidateQueries({ queryKey: ["sent-messages"] });
     },
-    onError: (error) => {
-      toast.error("Failed to send message: " + error.message);
-    }
   });
 
   // Mark as read mutation
