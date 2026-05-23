@@ -151,6 +151,45 @@ BUGS FIXED (continued — 2026-05-20)
    - Note: also had to add https://developers.google.com/oauthplayground to the OAuth client's
      authorized redirect URIs to allow Playground to work.
 
+---
+
+Session Summary — 2026-05-23
+================================
+
+BUGS FIXED
+----------
+
+1. Messages — sent message disappeared from sender's view after sending
+   - Root cause: no optimistic update; sendMutation.onSuccess cleared form state
+     then called invalidateQueries, leaving a gap where the message was gone
+     from the compose form but the Sent list hadn't refreshed yet.
+   - Fix: added onMutate optimistic update — immediately inserts the message into
+     the ["sent-messages"] cache before the network call, with rollback on error.
+     Moved invalidateQueries to onSettled so it always fires. Added setActiveTab("sent")
+     in onSuccess so the user is taken straight to the Sent tab to see the message.
+   - File: src/pages/Messages.tsx
+
+2. Messages — inbox empty for all received messages (Mehedi's message not visible)
+   - Root cause A: missing RLS SELECT policy on internal_messages for recipients.
+     The original migration only allowed senders to SELECT from internal_messages.
+     When the inbox query joined message_recipients → internal_messages, PostgREST's
+     INNER JOIN filtered out every row where the current user was the recipient (not
+     sender), returning an empty inbox for everyone.
+   - Root cause B: the naive fix (adding a policy that subqueries message_recipients)
+     created a circular RLS dependency: the new internal_messages policy subqueried
+     message_recipients, whose "view recipients of messages they sent" policy
+     subqueried back into internal_messages — causing PostgreSQL infinite recursion,
+     and the query failing silently (UI showed "No messages").
+   - Fix: created a SECURITY DEFINER function public.is_message_recipient(msg_id)
+     that checks recipient status by joining message_recipients and employees directly,
+     bypassing RLS inside the function. Replaced the circular policy with one that
+     calls this function. Run in Supabase SQL Editor:
+       CREATE OR REPLACE FUNCTION public.is_message_recipient(msg_id UUID) ...
+       DROP POLICY IF EXISTS "Recipients can view messages sent to them" ON public.internal_messages;
+       CREATE POLICY "Recipients can view messages sent to them"
+         ON public.internal_messages FOR SELECT USING (public.is_message_recipient(id));
+   - No frontend changes needed for the RLS fix.
+
 PENDING / FUTURE WORK
 ---------------------
 
