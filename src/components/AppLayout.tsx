@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { NotificationBell } from "./NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import {
@@ -363,6 +364,9 @@ const AppLayout = () => {
           {/* Header with trigger */}
           <header className="h-14 border-b border-border flex items-center px-4 sticky top-0 bg-background z-10">
             <SidebarTrigger />
+            <div className="ml-auto">
+              <NotificationBell />
+            </div>
           </header>
           
           {/* Page content */}
