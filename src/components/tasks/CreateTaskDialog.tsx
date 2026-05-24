@@ -40,6 +40,7 @@ interface CreateTaskDialogProps {
   onOpenChange: (open: boolean) => void;
   employees: Array<{ id: string; first_name: string; last_name: string; employee_code: string }>;
   currentEmployeeId?: string;
+  isAdmin?: boolean;
 }
 
 export function CreateTaskDialog({
@@ -47,6 +48,7 @@ export function CreateTaskDialog({
   onOpenChange,
   employees,
   currentEmployeeId,
+  isAdmin = false,
 }: CreateTaskDialogProps) {
   const queryClient = useQueryClient();
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -109,21 +111,17 @@ export function CreateTaskDialog({
         .from("employees")
         .select("id")
         .eq("user_id", userData.user.id)
-        .single();
+        .maybeSingle();
 
-      if (empError) {
-        if (empError.code === "PGRST116") {
-          throw new Error("Your account is not linked to an employee record yet. Please contact an admin.");
-        }
-        throw empError;
-      }
-      if (!empData?.id) {
+      if (empError) throw empError;
+
+      if (!empData && !isAdmin) {
         throw new Error(
           "Your account is not linked to an employee record yet. Please contact an admin."
         );
       }
 
-      const resolvedEmployeeId = empData.id;
+      const resolvedEmployeeId = empData?.id ?? null;
 
       // Insert the task
       const { data: taskData, error: taskError } = await supabase

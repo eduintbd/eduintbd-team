@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Edit, Trash2, Calendar, User } from "lucide-react";
+import { Eye, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
-import { EditTaskDialog } from "./EditTaskDialog";
 
 interface Task {
   id: string;
@@ -34,12 +33,12 @@ interface TaskListViewProps {
   tasks: Task[];
   isAdmin: boolean;
   currentEmployeeId?: string;
+  onDelete: (taskId: string) => void;
 }
 
-export function TaskListView({ tasks, isAdmin, currentEmployeeId }: TaskListViewProps) {
+export function TaskListView({ tasks, isAdmin, currentEmployeeId, onDelete }: TaskListViewProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -77,15 +76,6 @@ export function TaskListView({ tasks, isAdmin, currentEmployeeId }: TaskListView
     setDetailDialogOpen(true);
   };
 
-  const handleEdit = (task: Task) => {
-    setSelectedTask(task);
-    setEditDialogOpen(true);
-  };
-
-  const canEditTask = (task: Task) => {
-    if (isAdmin) return true;
-    return task.assigned_to === currentEmployeeId;
-  };
 
   return (
     <div className="space-y-3">
@@ -178,15 +168,6 @@ export function TaskListView({ tasks, isAdmin, currentEmployeeId }: TaskListView
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {canEditTask(task) && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(task)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -198,20 +179,15 @@ export function TaskListView({ tasks, isAdmin, currentEmployeeId }: TaskListView
       </Card>
 
       {selectedTask && (
-        <>
-          <TaskDetailDialog
-            task={selectedTask}
-            open={detailDialogOpen}
-            onOpenChange={setDetailDialogOpen}
-          />
-          <EditTaskDialog
-            task={selectedTask}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            isAdmin={isAdmin}
-          />
-        </>
+        <TaskDetailDialog
+          task={selectedTask}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          onDelete={onDelete}
+          isAdmin={isAdmin}
+        />
       )}
+
     </div>
   );
 }

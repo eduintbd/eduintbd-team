@@ -127,6 +127,20 @@ export default function Tasks() {
     },
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Task deleted");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete task: " + error.message);
+    },
+  });
+
   const updateTaskStatusMutation = useMutation({
     mutationFn: async ({ taskId, newStatus }: { taskId: string; newStatus: string }) => {
       const { error } = await supabase
@@ -255,16 +269,18 @@ export default function Tasks() {
             onStatusChange={(taskId, newStatus) =>
               updateTaskStatusMutation.mutate({ taskId, newStatus })
             }
+            onDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
             isAdmin={isAdmin}
             currentEmployeeId={isSignedIn ? currentEmployee?.id : undefined}
           />
         </TabsContent>
 
         <TabsContent value="list" className="space-y-4">
-          <TaskListView
+          <TaskListView
             tasks={tasks || []}
             isAdmin={isAdmin}
             currentEmployeeId={isSignedIn ? currentEmployee?.id : undefined}
+            onDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
           />
         </TabsContent>
       </Tabs>
@@ -274,6 +290,7 @@ export default function Tasks() {
         onOpenChange={setCreateDialogOpen}
         employees={employees || []}
         currentEmployeeId={isSignedIn ? currentEmployee?.id : undefined}
+        isAdmin={isAdmin}
       />
     </div>
   );

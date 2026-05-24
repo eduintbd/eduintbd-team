@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, User, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, User, Clock, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EditTaskDialog } from "./EditTaskDialog";
 
 interface TaskDetailDialogProps {
   task: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDelete?: (taskId: string) => void;
+  isAdmin?: boolean;
 }
 
-export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogProps) {
+export function TaskDetailDialog({ task, open, onOpenChange, onDelete, isAdmin = false }: TaskDetailDialogProps) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -37,76 +45,131 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{task.title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6 py-4">
-          <div className="flex gap-2">
-            <Badge variant="outline" className={cn("capitalize", getStatusColor(task.status))}>
-              {task.status.replace("_", " ")}
-            </Badge>
-            <Badge variant="outline" className={cn("capitalize", getPriorityColor(task.priority))}>
-              {task.priority} Priority
-            </Badge>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{task.title}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="flex gap-2">
+              <Badge variant="outline" className={cn("capitalize", getStatusColor(task.status))}>
+                {task.status.replace("_", " ")}
+              </Badge>
+              <Badge variant="outline" className={cn("capitalize", getPriorityColor(task.priority))}>
+                {task.priority} Priority
+              </Badge>
+            </div>
+
+            {task.description && (
+              <div>
+                <h3 className="font-semibold mb-2">Description</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              {task.assigned_to_employee && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="h-4 w-4" />
+                    <span>Assigned To</span>
+                  </div>
+                  <p className="font-medium">
+                    {task.assigned_to_employee.first_name} {task.assigned_to_employee.last_name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {task.assigned_to_employee.employee_code}
+                  </p>
+                </div>
+              )}
+
+              {task.assigned_by_employee && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="h-4 w-4" />
+                    <span>Assigned By</span>
+                  </div>
+                  <p className="font-medium">
+                    {task.assigned_by_employee.first_name} {task.assigned_by_employee.last_name}
+                  </p>
+                </div>
+              )}
+
+              {task.due_date && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>Due Date</span>
+                  </div>
+                  <p className="font-medium">{new Date(task.due_date).toLocaleDateString()}</p>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>Created</span>
+                </div>
+                <p className="font-medium">{new Date(task.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
           </div>
 
-          {task.description && (
-            <div>
-              <h3 className="font-semibold mb-2">Description</h3>
-              <p className="text-muted-foreground whitespace-pre-wrap">{task.description}</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            {task.assigned_to_employee && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>Assigned To</span>
-                </div>
-                <p className="font-medium">
-                  {task.assigned_to_employee.first_name} {task.assigned_to_employee.last_name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {task.assigned_to_employee.employee_code}
-                </p>
-              </div>
+          <div className="flex gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => { onOpenChange(false); setEditOpen(true); }}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Task
+            </Button>
+            {onDelete && (
+              <Button
+                variant="outline"
+                className="flex-1 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => setDeleteConfirmOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Task
+              </Button>
             )}
-
-            {task.assigned_by_employee && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>Assigned By</span>
-                </div>
-                <p className="font-medium">
-                  {task.assigned_by_employee.first_name} {task.assigned_by_employee.last_name}
-                </p>
-              </div>
-            )}
-
-            {task.due_date && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Due Date</span>
-                </div>
-                <p className="font-medium">{new Date(task.due_date).toLocaleDateString()}</p>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>Created</span>
-              </div>
-              <p className="font-medium">{new Date(task.created_at).toLocaleDateString()}</p>
-            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <EditTaskDialog
+        task={task}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        isAdmin={isAdmin}
+      />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{task.title}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                onDelete?.(task.id);
+                setDeleteConfirmOpen(false);
+                onOpenChange(false);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

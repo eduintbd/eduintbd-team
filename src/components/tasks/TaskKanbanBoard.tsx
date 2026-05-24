@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, User, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TaskDetailDialog } from "./TaskDetailDialog";
 
 interface Task {
   id: string;
@@ -21,11 +23,13 @@ interface Task {
 interface TaskKanbanBoardProps {
   tasks: Task[];
   onStatusChange: (taskId: string, newStatus: string) => void;
+  onDelete: (taskId: string) => void;
   isAdmin: boolean;
   currentEmployeeId?: string;
 }
 
-export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmployeeId }: TaskKanbanBoardProps) {
+export function TaskKanbanBoard({ tasks, onStatusChange, onDelete, isAdmin, currentEmployeeId }: TaskKanbanBoardProps) {
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const columns = [
     { id: "pending", title: "Pending", color: "border-l-yellow-500" },
     { id: "in_progress", title: "In Progress", color: "border-l-blue-500" },
@@ -45,15 +49,7 @@ export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmploye
     }
   };
 
-  // Check if user can update this specific task
-  const canUpdateTask = (task: Task) => {
-    if (isAdmin) return true;
-    // Allow if user is assigned to or created the task
-    if (currentEmployeeId && (task.assigned_to === currentEmployeeId || task.assigned_by === currentEmployeeId)) {
-      return true;
-    }
-    return false;
-  };
+  const canUpdateTask = (_task: Task) => true;
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId);
@@ -78,6 +74,7 @@ export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmploye
   };
 
   return (
+    <>
     <div className="flex gap-4 overflow-x-auto pb-4 md:grid md:grid-cols-3 md:overflow-x-visible md:pb-0">
       {columns.map((column) => (
         <div
@@ -102,10 +99,10 @@ export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmploye
                     key={task.id}
                     draggable={canDrag}
                     onDragStart={(e) => handleDragStart(e, task.id)}
+                    onClick={() => setSelectedTask(task)}
                     className={cn(
-                      "border-l-4 transition-shadow hover:shadow-md",
-                      column.color,
-                      canDrag ? "cursor-move" : "cursor-default"
+                      "border-l-4 transition-shadow hover:shadow-md cursor-pointer",
+                      column.color
                     )}
                   >
                     <CardHeader className="pb-3">
@@ -115,7 +112,7 @@ export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmploye
                         </CardTitle>
                         <Badge
                           variant="outline"
-                          className={cn("text-xs", getPriorityColor(task.priority))}
+                          className={cn("text-xs flex-shrink-0", getPriorityColor(task.priority))}
                         >
                           {task.priority}
                         </Badge>
@@ -168,5 +165,16 @@ export function TaskKanbanBoard({ tasks, onStatusChange, isAdmin, currentEmploye
         </div>
       ))}
     </div>
+
+      {selectedTask && (
+        <TaskDetailDialog
+          task={selectedTask}
+          open={!!selectedTask}
+          onOpenChange={(open) => !open && setSelectedTask(null)}
+          onDelete={onDelete}
+          isAdmin={isAdmin}
+        />
+      )}
+    </>
   );
 }
