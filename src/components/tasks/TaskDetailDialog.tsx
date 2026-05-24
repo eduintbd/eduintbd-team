@@ -5,18 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, User, Clock, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EditTaskDialog } from "./EditTaskDialog";
 
 interface TaskDetailDialogProps {
   task: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: () => void;
   onDelete?: (taskId: string) => void;
   isAdmin?: boolean;
 }
 
-export function TaskDetailDialog({ task, open, onOpenChange, onDelete, isAdmin = false }: TaskDetailDialogProps) {
-  const [editOpen, setEditOpen] = useState(false);
+export function TaskDetailDialog({ task, open, onOpenChange, onEdit, onDelete, isAdmin = false }: TaskDetailDialogProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -121,7 +120,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, onDelete, isAdmin =
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => { onOpenChange(false); setEditOpen(true); }}
+              onClick={() => { onOpenChange(false); onEdit?.(); }}
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit Task
@@ -139,13 +138,6 @@ export function TaskDetailDialog({ task, open, onOpenChange, onDelete, isAdmin =
           </div>
         </DialogContent>
       </Dialog>
-
-      <EditTaskDialog
-        task={task}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        isAdmin={isAdmin}
-      />
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>

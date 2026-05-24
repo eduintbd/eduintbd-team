@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, User, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { EditTaskDialog } from "./EditTaskDialog";
 
 interface Task {
   id: string;
@@ -30,6 +31,7 @@ interface TaskKanbanBoardProps {
 
 export function TaskKanbanBoard({ tasks, onStatusChange, onDelete, isAdmin, currentEmployeeId }: TaskKanbanBoardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editTask, setEditTask] = useState<Task | null>(null);
   const columns = [
     { id: "pending", title: "Pending", color: "border-l-yellow-500" },
     { id: "in_progress", title: "In Progress", color: "border-l-blue-500" },
@@ -171,7 +173,17 @@ export function TaskKanbanBoard({ tasks, onStatusChange, onDelete, isAdmin, curr
           task={selectedTask}
           open={!!selectedTask}
           onOpenChange={(open) => !open && setSelectedTask(null)}
+          onEdit={() => { setEditTask(selectedTask); setSelectedTask(null); }}
           onDelete={onDelete}
+          isAdmin={isAdmin}
+        />
+      )}
+
+      {editTask && (
+        <EditTaskDialog
+          task={editTask}
+          open={!!editTask}
+          onOpenChange={(open) => !open && setEditTask(null)}
           isAdmin={isAdmin}
         />
       )}

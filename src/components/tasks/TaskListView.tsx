@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { EditTaskDialog } from "./EditTaskDialog";
 
 interface Task {
   id: string;
@@ -39,6 +40,7 @@ interface TaskListViewProps {
 export function TaskListView({ tasks, isAdmin, currentEmployeeId, onDelete }: TaskListViewProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -183,7 +185,17 @@ export function TaskListView({ tasks, isAdmin, currentEmployeeId, onDelete }: Ta
           task={selectedTask}
           open={detailDialogOpen}
           onOpenChange={setDetailDialogOpen}
+          onEdit={() => { setEditTask(selectedTask); setDetailDialogOpen(false); }}
           onDelete={onDelete}
+          isAdmin={isAdmin}
+        />
+      )}
+
+      {editTask && (
+        <EditTaskDialog
+          task={editTask}
+          open={!!editTask}
+          onOpenChange={(open) => !open && setEditTask(null)}
           isAdmin={isAdmin}
         />
       )}
