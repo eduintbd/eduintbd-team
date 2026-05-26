@@ -204,3 +204,72 @@ PENDING / FUTURE WORK
      d. Add google_refresh_token column to employees table
      e. Add "Connect Google Account" button in Email page (shown when no token stored)
    - Estimated effort: 2-3 hours
+
+---
+
+Session Summary — 2026-05-24/26
+================================
+
+FEATURES ADDED
+--------------
+
+1. Task Management — Trello-style system for all employees
+   - Root cause of original bug: CreateTaskDialog used .single() to look up the
+     current user's employee record; if admin had no employee row, it threw PGRST116
+     before the task INSERT ever ran.
+   - Fix: changed to .maybeSingle(); added isAdmin bypass so admins without employee
+     records can still create tasks (assigned_by = null); RLS handles DB-level checks.
+   - New RLS policies (run in Supabase SQL Editor):
+     · DROP old "Approved active employees can create tasks" policy
+     · "Employees can create tasks" — any linked employee OR admin/manager can INSERT
+     · "Employees can view tasks they created" — assigned_by = e.id (SELECT)
+     · "Employees can update tasks they created" — assigned_by = e.id (UPDATE)
+     · "Employees can delete tasks they created" — assigned_by = e.id (DELETE)
+   - Files: src/components/tasks/CreateTaskDialog.tsx, src/pages/Tasks.tsx
+   - Migration: eduintbd-team/supabase/migrations/20260524000000_trello_style_task_creation.sql
+
+2. Task Management — Edit and Delete from card detail modal
+   - Clicking a Kanban card or list row eye icon opens a TaskDetailDialog
+     with full task details + Edit Task and Delete Task buttons at the bottom.
+   - Edit Task: closes detail dialog, opens EditTaskDialog (managed at parent level
+     to avoid unmount-before-open race condition).
+   - Delete Task: shows confirmation AlertDialog before calling delete mutation.
+   - canEditTask / canUpdateTask simplified to always return true (RLS enforces
+     actual permissions at DB level, matching Trello-style UX).
+   - Files: src/components/tasks/TaskDetailDialog.tsx,
+            src/components/tasks/TaskKanbanBoard.tsx,
+            src/components/tasks/TaskListView.tsx
+
+3. Notification system — task assignment notifications
+   - New notifications table with RLS (employees see only their own).
+   - DB trigger (handle_task_assignment_notification) fires on task_assignments
+     INSERT and inserts a notification for the assignee, including assigner's name
+     and task title.
+   - NotificationBell component in the app header: bell icon with unread badge,
+     Popover dropdown listing recent notifications with relative timestamps,
+     mark-all-read on open, Supabase Realtime subscription for live delivery.
+   - Files: src/components/NotificationBell.tsx, src/components/AppLayout.tsx
+   - Migration: eduintbd-team/supabase/migrations/20260524000001_notifications.sql
+   - SQL to run in Supabase (idempotent version with IF NOT EXISTS / DROP IF EXISTS
+     guards provided — includes CREATE TABLE, 3 RLS policies, trigger function,
+     and trigger).
+
+DATABASE CHANGES (run manually in Supabase SQL Editor)
+------------------------------------------------------
+
+1. Task creation policy update (replaces approved-only restriction):
+   DROP POLICY IF EXISTS "Approved active employees can create tasks" ON public.tasks;
+   DROP POLICY IF EXISTS "All employees can create tasks" ON public.tasks;
+   CREATE POLICY "Employees can create tasks" ON public.tasks FOR INSERT TO authenticated
+     WITH CHECK (EXISTS (SELECT 1 FROM public.employees e WHERE e.user_id = auth.uid())
+       OR public.has_role(auth.uid(), 'admin'::public.app_role)
+       OR public.has_role(auth.uid(), 'manager'::public.app_role));
+   CREATE POLICY "Employees can view tasks they created" ON public.tasks FOR SELECT TO authenticated
+     USING (assigned_by IN (SELECT id FROM public.employees WHERE user_id = auth.uid()));
+   CREATE POLICY "Employees can update tasks they created" ON public.tasks FOR UPDATE TO authenticated
+     USING (assigned_by IN (SELECT id FROM public.employees WHERE user_id = auth.uid()));
+   CREATE POLICY "Employees can delete tasks they created" ON public.tasks FOR DELETE TO authenticated
+     USING (assigned_by IN (SELECT id FROM public.employees WHERE user_id = auth.uid()));
+
+2. Notifications table, RLS policies, and trigger:
+   (see full idempotent SQL in session — includes IF NOT EXISTS and DROP IF EXISTS guards)
