@@ -37,6 +37,7 @@ import AssetRegisterOperations from "./pages/AssetRegisterOperations";
 import StationaryManagement from "./pages/StationaryManagement";
 import GroceryManagement from "./pages/GroceryManagement";
 import CardManagement from "./pages/CardManagement";
+import ExpensePayments from "./pages/ExpensePayments";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/procurement/items" element={<ProcurementItems />} />
             <Route path="/procurement/vendors" element={<Vendors />} />
             <Route path="/procurement/payments" element={<ProcurementPayments />} />
+            <Route path="/procurement/expense-payments" element={<ExpensePayments />} />
             <Route path="/files" element={<FileManagement />} />
             <Route path="/social-media" element={<SocialMedia />} />
             <Route path="/email" element={<Email />} />

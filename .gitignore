@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+supabase/functions/.env
 *.db
 *.sqlite
 .DS_Store
@@ -10,3 +11,4 @@ ios/
 *.tsbuildinfo
 .claude/
 supabase/.temp/
+debug/

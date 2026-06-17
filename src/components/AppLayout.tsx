@@ -35,6 +35,7 @@ import {
   Home,
   CreditCard as CreditCardIcon,
   Monitor,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -139,6 +140,7 @@ const AppLayout = () => {
     { icon: Boxes, label: "Items Catalog", path: "/procurement/items", section: "PROCUREMENT" },
     { icon: Store, label: "Vendors", path: "/procurement/vendors", section: "PROCUREMENT" },
     { icon: CreditCard, label: "Payments", path: "/procurement/payments", section: "PROCUREMENT" },
+    { icon: Wallet, label: "Expense Payments", path: "/procurement/expense-payments", section: "PROCUREMENT" },
     // Accounting Section
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", section: "ACCOUNTING" },
     { icon: BookOpen, label: "Accounts", path: "/accounts", section: "ACCOUNTING" },

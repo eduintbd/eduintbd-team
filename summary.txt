@@ -273,3 +273,98 @@ DATABASE CHANGES (run manually in Supabase SQL Editor)
 
 2. Notifications table, RLS policies, and trigger:
    (see full idempotent SQL in session — includes IF NOT EXISTS and DROP IF EXISTS guards)
+
+
+Session Summary — 2026-06-15
+============================
+
+FEATURE: bKash Expense Payments (Purchase Request → Approval → Payment)
+----------------------------------------------------------------------
+
+Goal: let employees submit office-expense payment requests; admin approves/rejects;
+on approval, pay via bKash. Built on existing primitives (app_role/has_role RBAC,
+notifications table, employees.user_id, Supabase edge-function secret pattern).
+Choices made with the user: NEW dedicated table (not extending purchase_orders),
+ADMIN-ONLY approval.
+
+ARCHITECTURE / DATA INTEGRITY (three independent gates)
+  1. RLS — employees INSERT/SELECT own rows only; only admin UPDATEs; nobody DELETEs.
+  2. State-machine trigger — enforces legal transitions + who may make them; core
+     fields (amount/merchant_id/purpose/expected_date) immutable after creation;
+     payment fields writable by the service role only.
+  3. Edge function — re-verifies admin role server-side + atomic compare-and-set
+     claim so a double-click/race can never pay twice.
+
+bKash PRODUCT FINDING
+  - User linked the Checkout (URL) doc; their sandbox creds were verified by live
+    curl to be TOKENIZED Checkout (base https://tokenized.sandbox.bka.sh/v1.2.0-beta/
+    tokenized/checkout). token/grant + create both returned statusCode 0000.
+  - Tokenized Checkout RECEIVES money (payer confirms on bKash's hosted page); it is
+    NOT a headless vendor payout. A true approve→auto-pay-vendor needs bKash
+    Disbursement/B2C creds (open item, offered to add behind the same button).
+
+PAY VIA bKASH FLOW (front-channel create → execute)
+  approved/payment_failed --[bkash-execute-payment]--> token + /create
+    -> stores paymentID, status = awaiting_payer, returns bkashURL
+  client opens bkashURL in a popup (mirrors facebook-oauth popup+postMessage pattern)
+  bKash redirects popup --> [bkash-callback] (?paymentID&status)
+    success -> claim awaiting_payer→payment_processing -> token + /execute
+            -> paid (stores trxID); else payment_failed
+    callback returns HTML that postMessages the opener and closes the popup.
+  Stuck awaiting_payer (payer abandoned popup): admin "Cancel" → payment_failed → retry.
+  (Production TODO: reconcile via bKash Query API before abandoning.)
+
+STATUS MACHINE (expense_payment_status enum)
+  pending_approval --admin--> approved | rejected
+  approved | payment_failed --system--> payment_processing  (claim for create)
+  payment_processing --system--> awaiting_payer | payment_failed
+  awaiting_payer --system--> payment_processing (execute) | payment_failed (cancel)
+  awaiting_payer --admin--> payment_failed (manual abandon)
+  payment_processing --system--> paid | payment_failed
+  Terminal: paid, rejected.
+
+FILES ADDED
+  supabase/migrations/20260615000000_bkash_expense_payments.sql
+    - expense_payment_status enum; expense_payment_requests + expense_payment_audit_log
+      tables; auto request_number (EXP-YYYY-NNNN); validate_expense_payment_transition
+      trigger; handle_expense_payment_created + handle_expense_payment_status_change
+      (audit rows + notify admins on create / requester on decision); RLS policies.
+  supabase/migrations/20260615010000_bkash_awaiting_payer_enum.sql  (adds awaiting_payer)
+  supabase/migrations/20260615020000_bkash_awaiting_payer_logic.sql (state machine +
+      audit labels for the create→execute flow)
+  supabase/functions/bkash-execute-payment/index.ts  (verify_jwt=true; create step)
+  supabase/functions/bkash-callback/index.ts          (verify_jwt=false; execute step)
+  supabase/functions/bkash-test-connection/index.ts   (SANDBOX diagnostic — DELETE
+      before prod; token grant + create, returns bkashURL)
+  supabase/functions/.env  (git-ignored; sandbox creds + base URL + BKASH_CALLBACK_URL)
+  src/hooks/useExpensePayments.ts  (react-query: list/create/decide/execute/cancel +
+      useCurrentUserRoles)
+  src/pages/ExpensePayments.tsx  (submit form + admin approve/reject/pay/cancel UI;
+      popup + postMessage handling)
+
+FILES EDITED
+  supabase/config.toml  (registered bkash-execute-payment / bkash-callback /
+      bkash-test-connection)
+  src/App.tsx  (route /procurement/expense-payments)
+  src/components/AppLayout.tsx  (PROCUREMENT nav item "Expense Payments", Wallet icon)
+  .gitignore  (explicit supabase/functions/.env)
+
+SECRETS (Supabase function env / supabase/functions/.env — SANDBOX)
+  BKASH_CHECKOUT_URL_BASE_URL = https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout
+  BKASH_CHECKOUT_URL_APP_KEY / _APP_SECRET / _USER_NAME / _PASSWORD
+  BKASH_CALLBACK_URL = http://localhost:54321/functions/v1/bkash-callback
+    (omit in cloud → defaults to https://<project-ref>.supabase.co/functions/v1/bkash-callback)
+
+TO RUN / DEPLOY (user action)
+  1. Apply the 3 migrations (Lovable sync or `supabase db push`).
+  2. Serve functions:  supabase functions serve --env-file supabase/functions/.env
+     (cloud: deploy functions + `supabase secrets set --env-file supabase/functions/.env`)
+  3. Test: create → approve → Pay via bKash → complete in popup → row flips to Paid.
+
+NOTES
+  - Generated src/integrations/supabase/types.ts lags migrations (new tables absent);
+    hook casts `supabase as any`. tsc baseline already had ~239 errors from this;
+    all NEW/edited files typecheck clean.
+  - Sandbox creds are publicly known — rotate before any production use.
+  - Open item: add bKash Disbursement/B2C payout path behind the same button for a
+    real outbound vendor payment (Tokenized Checkout is money-IN only).
