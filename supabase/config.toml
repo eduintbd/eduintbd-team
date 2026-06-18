@@ -42,7 +42,3 @@ verify_jwt = true
 # Public: bKash redirects the payer's browser here after they confirm payment.
 [functions.bkash-callback]
 verify_jwt = false
-
-# SANDBOX DIAGNOSTIC — delete before production.
-[functions.bkash-test-connection]
-verify_jwt = false
