@@ -9,6 +9,11 @@
 --      excluded from MAX, so MAX+1 could land on an already-used number.
 --
 -- This version:
+--   * runs SECURITY DEFINER so its internal SELECTs see EVERY row. As the
+--     default SECURITY INVOKER, the MAX/EXISTS reads ran as the submitting
+--     employee, whose RLS hides other users' rows — so the counter restarted at
+--     0001 and collided with the unique index (which RLS does NOT filter). This
+--     was the real cause of the duplicate-key error from the app.
 --   * takes a per-year transaction advisory lock (kills the race),
 --   * only considers rows matching the strict EXP-YYYY-<digits> shape when
 --     seeding the counter (so a malformed suffix can't break CAST or MAX),
@@ -16,7 +21,11 @@
 --     guaranteeing the generated request_number is unique before insert.
 
 CREATE OR REPLACE FUNCTION public.generate_expense_request_number()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
 DECLARE
   next_num INTEGER;
   year_prefix TEXT := to_char(CURRENT_DATE, 'YYYY');
