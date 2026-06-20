@@ -40,6 +40,29 @@ interface Account {
   is_active: boolean;
 }
 
+// Valid subtypes per account type. The account code range is derived from the
+// type+subtype pair, so the subtype must always be one that belongs to the type
+// (otherwise the code falls back to the wrong default range).
+const SUBTYPES_BY_TYPE: Record<string, string[]> = {
+  asset: ["current_asset", "fixed_asset"],
+  liability: ["current_liability", "long_term_liability"],
+  equity: ["shareholders_equity"],
+  revenue: ["operating_revenue", "other_revenue"],
+  expense: ["operating_expense", "other_expense"],
+};
+
+const SUBTYPE_LABELS: Record<string, string> = {
+  current_asset: "Current Asset",
+  fixed_asset: "Fixed Asset",
+  current_liability: "Current Liability",
+  long_term_liability: "Long-term Liability",
+  shareholders_equity: "Shareholders Equity",
+  operating_revenue: "Operating Revenue",
+  other_revenue: "Other Revenue",
+  operating_expense: "Operating Expense",
+  other_expense: "Other Expense",
+};
+
 const ChartOfAccounts = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [open, setOpen] = useState(false);
@@ -220,11 +243,14 @@ const ChartOfAccounts = () => {
                 <Select
                   value={formData.account_type}
                   onValueChange={(value) => {
+                    const type = value as "asset" | "liability" | "equity" | "revenue" | "expense";
+                    // Reset the subtype to one that belongs to the new type so the
+                    // code range stays correct. The useEffect recomputes the code.
                     setFormData({
                       ...formData,
-                      account_type: value as "asset" | "liability" | "equity" | "revenue" | "expense",
+                      account_type: type,
+                      account_subtype: SUBTYPES_BY_TYPE[type][0] as typeof formData.account_subtype,
                     });
-                    setTimeout(() => generateAccountCode(), 0);
                   }}
                 >
                   <SelectTrigger>
@@ -257,22 +283,15 @@ const ChartOfAccounts = () => {
                         | "operating_expense"
                         | "other_expense",
                     });
-                    setTimeout(() => generateAccountCode(), 0);
                   }}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="current_asset">Current Asset</SelectItem>
-                    <SelectItem value="fixed_asset">Fixed Asset</SelectItem>
-                    <SelectItem value="current_liability">Current Liability</SelectItem>
-                    <SelectItem value="long_term_liability">Long-term Liability</SelectItem>
-                    <SelectItem value="shareholders_equity">Shareholders Equity</SelectItem>
-                    <SelectItem value="operating_revenue">Operating Revenue</SelectItem>
-                    <SelectItem value="other_revenue">Other Revenue</SelectItem>
-                    <SelectItem value="operating_expense">Operating Expense</SelectItem>
-                    <SelectItem value="other_expense">Other Expense</SelectItem>
+                    {(SUBTYPES_BY_TYPE[formData.account_type] ?? []).map((s) => (
+                      <SelectItem key={s} value={s}>{SUBTYPE_LABELS[s]}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
