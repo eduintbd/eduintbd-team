@@ -591,13 +591,17 @@ export default function EmployeeProfile() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" />Common KPIs</CardTitle>
-              <Button size="sm" variant="outline" onClick={() => setCommonForm(emptyCommon())}>
-                <Plus className="h-4 w-4 mr-1" /> Add Common KPI
-              </Button>
+              {canManage && (
+                <Button size="sm" variant="outline" onClick={() => setCommonForm(emptyCommon())}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Common KPI
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {commonKpis.length === 0 ? (
-                <p className="text-muted-foreground text-center py-6 text-sm">No common KPIs defined yet. Anyone can add one for the whole team.</p>
+                <p className="text-muted-foreground text-center py-6 text-sm">
+                  No common KPIs defined yet.{canManage ? " Add one that applies to the whole team." : ""}
+                </p>
               ) : (
                 <div className="space-y-2">
                   {commonKpis.map((ck: CommonKpi) => {
@@ -634,7 +638,7 @@ export default function EmployeeProfile() {
                           </div>
                         </div>
                         <Badge variant={done ? "default" : "secondary"}>{done ? "Completed" : "Pending"}</Badge>
-                        {(canManage || ck.created_by === currentUserId) && (
+                        {canManage && (
                           <Button variant="ghost" size="sm" title="Delete common KPI"
                             onClick={async () => {
                               if (!confirm(`Delete common KPI "${ck.title}" for everyone?`)) return;
