@@ -107,8 +107,8 @@ export function AttendanceLocationDialog({
 
   const attendanceMutation = useMutation({
     mutationFn: async () => {
-      if (!location) throw new Error("Location is required");
-
+      // Location is best-effort: capture it when the device/browser allows, but
+      // never block attendance if it is denied/unavailable.
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
@@ -143,9 +143,9 @@ export function AttendanceLocationDialog({
           employee_id: employee.id,
           attendance_date: today,
           clock_in: now,
-          clock_in_latitude: location.lat,
-          clock_in_longitude: location.lng,
-          clock_in_address: address,
+          clock_in_latitude: location?.lat ?? null,
+          clock_in_longitude: location?.lng ?? null,
+          clock_in_address: address || null,
           status: "present",
           notes: remarks || null,
         });
@@ -173,9 +173,9 @@ export function AttendanceLocationDialog({
           .from("attendance_records")
           .update({
             clock_out: now,
-            clock_out_latitude: location.lat,
-            clock_out_longitude: location.lng,
-            clock_out_address: address,
+            clock_out_latitude: location?.lat ?? null,
+            clock_out_longitude: location?.lng ?? null,
+            clock_out_address: address || null,
             total_hours: parseFloat(totalHours),
             notes: remarks ? `${remarks}` : null,
           })
@@ -278,6 +278,14 @@ export function AttendanceLocationDialog({
             />
           </div>
 
+          {/* Hint when proceeding without a captured location */}
+          {!location && !isGettingLocation && (
+            <p className="text-xs text-muted-foreground">
+              You can still {type === "in" ? "clock in" : "clock out"} without sharing your
+              location, or tap “Share location” to attach it.
+            </p>
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-3 pt-2">
             <Button
@@ -287,10 +295,16 @@ export function AttendanceLocationDialog({
             >
               Cancel
             </Button>
+            {!location && !isGettingLocation && (
+              <Button variant="secondary" onClick={getCurrentLocation} title="Share my location">
+                <Navigation className="mr-2 h-4 w-4" />
+                Share location
+              </Button>
+            )}
             <Button
               className="flex-1"
               onClick={() => attendanceMutation.mutate()}
-              disabled={!location || attendanceMutation.isPending}
+              disabled={attendanceMutation.isPending || isGettingLocation}
             >
               {attendanceMutation.isPending ? (
                 <>
@@ -298,7 +312,7 @@ export function AttendanceLocationDialog({
                   Submitting...
                 </>
               ) : (
-                "Submit"
+                type === "in" ? "Clock In" : "Clock Out"
               )}
             </Button>
           </div>

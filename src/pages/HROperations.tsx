@@ -433,11 +433,24 @@ export default function HROperations() {
                         {todayOvertime > 0 && <Badge variant="outline" className="text-xs text-orange-600">+{todayOvertime.toFixed(1)}h overtime</Badge>}
                       </p>
                     )}
-                    {myTodayAttendance?.clock_in_address && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {myTodayAttendance.clock_in_address.split(',').slice(0, 2).join(',')}
-                      </p>
+                    {(myTodayAttendance?.clock_in_address || myTodayAttendance?.clock_in_latitude) && (
+                      myTodayAttendance?.clock_in_latitude ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${myTodayAttendance.clock_in_latitude},${myTodayAttendance.clock_in_longitude}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          {myTodayAttendance.clock_in_address
+                            ? myTodayAttendance.clock_in_address.split(',').slice(0, 2).join(',')
+                            : "View location on map"}
+                        </a>
+                      ) : (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <MapPin className="h-3 w-3" />
+                          {myTodayAttendance.clock_in_address.split(',').slice(0, 2).join(',')}
+                        </p>
+                      )
                     )}
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
