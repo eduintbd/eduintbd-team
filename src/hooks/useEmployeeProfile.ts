@@ -397,6 +397,7 @@ export function useCompleteKpi(employeeId: string) {
     mutationFn: async (input: {
       id: string;
       completed: boolean;
+      notes?: string | null;
       attachment_url?: string | null;
       attachment_name?: string | null;
     }) => {
@@ -404,6 +405,7 @@ export function useCompleteKpi(employeeId: string) {
         status: input.completed ? "completed" : "pending",
         completed_at: input.completed ? new Date().toISOString() : null,
       };
+      if (input.notes !== undefined) patch.notes = input.notes;
       if (input.attachment_url !== undefined) patch.attachment_url = input.attachment_url;
       if (input.attachment_name !== undefined) patch.attachment_name = input.attachment_name;
       const { error } = await db.from("employee_kpis").update(patch).eq("id", input.id);

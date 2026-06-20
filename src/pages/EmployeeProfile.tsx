@@ -237,6 +237,7 @@ export default function EmployeeProfile() {
       if (completeCtx.kind === "self") {
         await completeKpi.mutateAsync({
           id: completeCtx.id, completed: true,
+          notes: completeNotes || null,
           attachment_url: attach?.attachment_url ?? undefined,
           attachment_name: attach?.attachment_name ?? undefined,
         });
@@ -259,9 +260,11 @@ export default function EmployeeProfile() {
     }
   };
 
-  const openComplete = (kind: "self" | "common", id: string, title: string) => {
+  const openComplete = (
+    kind: "self" | "common", id: string, title: string, existingNote?: string | null
+  ) => {
     setCompleteFile(null);
-    setCompleteNotes("");
+    setCompleteNotes(existingNote ?? "");
     setCompleteCtx({ kind, id, title });
   };
 
@@ -540,7 +543,7 @@ export default function EmployeeProfile() {
                       <div key={t.id} className="flex items-start gap-3 rounded-lg border p-3">
                         <button
                           disabled={!isOwner}
-                          onClick={() => (done ? reopenSelf(t) : openComplete("self", t.id, t.metric_name))}
+                          onClick={() => (done ? reopenSelf(t) : openComplete("self", t.id, t.metric_name, t.notes))}
                           className="mt-0.5 disabled:opacity-50"
                           title={done ? "Reopen" : "Mark complete"}
                         >
@@ -598,7 +601,7 @@ export default function EmployeeProfile() {
                           onClick={() =>
                             done
                               ? upsertCompletion.mutateAsync({ common_kpi_id: ck.id, completed: false }).catch((e: any) => toast.error(e.message))
-                              : openComplete("common", ck.id, ck.title)
+                              : openComplete("common", ck.id, ck.title, c?.notes)
                           }
                           className="mt-0.5 disabled:opacity-50"
                           title={isOwner ? (done ? "Reopen" : "Mark complete") : ""}
@@ -845,12 +848,11 @@ export default function EmployeeProfile() {
           {completeCtx && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">{completeCtx.title}</p>
-              {completeCtx.kind === "common" && (
-                <div className="space-y-1">
-                  <Label>Notes (optional)</Label>
-                  <Textarea rows={2} value={completeNotes} onChange={(e) => setCompleteNotes(e.target.value)} />
-                </div>
-              )}
+              <div className="space-y-1">
+                <Label>Remarks (optional)</Label>
+                <Textarea rows={2} placeholder="Add a note about this update…"
+                  value={completeNotes} onChange={(e) => setCompleteNotes(e.target.value)} />
+              </div>
               <div className="space-y-1">
                 <Label className="inline-flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" />Attachment (optional)</Label>
                 <Input type="file" onChange={(e) => setCompleteFile(e.target.files?.[0] ?? null)} />
