@@ -83,44 +83,16 @@ const JournalEntries = () => {
   }, [entryType, formData.entry_date]);
 
   const generateVoucherNumber = async () => {
-    const date = new Date(formData.entry_date);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
     const prefix = ENTRY_TYPE_CONFIG[entryType].prefix;
-    
-    // Get all entries of the same type, year, and month to find the highest sequence number
-    const startDate = `${year}-${month}-01`;
-    const endDate = month === "12" 
-      ? `${year + 1}-01-01` 
-      : `${year}-${String(Number(month) + 1).padStart(2, "0")}-01`;
-    
-    const { data: typeEntries } = await supabase
-      .from("journal_entries")
-      .select("entry_number")
-      .eq("entry_type", entryType)
-      .gte("entry_date", startDate)
-      .lt("entry_date", endDate)
-      .order("created_at", { ascending: false });
-
-    let maxNumber = 0;
-    
-    // Extract numeric parts from voucher numbers and find the maximum
-    if (typeEntries && typeEntries.length > 0) {
-      typeEntries.forEach(entry => {
-        const match = entry.entry_number.match(/-(\d+)$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      });
-    }
-
-    const nextNumber = String(maxNumber + 1).padStart(5, "0");
-    const voucherNumber = `${prefix}-${year}-${month}-${nextNumber}`;
-    
-    setFormData(prev => ({ ...prev, entry_number: voucherNumber }));
+    // Compute the next voucher number server-side (SECURITY DEFINER) so it stays
+    // unique across ALL entries — makers can only read their own rows via RLS, so
+    // a client-side scan would miss other vouchers and collide on insert.
+    const { data: voucherNumber, error } = await (supabase as any).rpc(
+      "next_journal_voucher_number",
+      { p_prefix: prefix, p_entry_type: entryType, p_entry_date: formData.entry_date }
+    );
+    if (error || !voucherNumber) return;
+    setFormData(prev => ({ ...prev, entry_number: voucherNumber as string }));
   };
 
   const fetchAccounts = async () => {
