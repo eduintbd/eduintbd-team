@@ -17,6 +17,7 @@ import FinancialStatements from "./pages/FinancialStatements";
 import Assets from "./pages/Assets";
 import Reports from "./pages/Reports";
 import Employees from "./pages/Employees";
+import EmployeeProfile from "./pages/EmployeeProfile";
 import HROperations from "./pages/HROperations";
 import Departments from "./pages/Departments";
 import Tasks from "./pages/Tasks";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/assets" element={<Assets />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/employees" element={<Employees />} />
+            <Route path="/employees/:employeeId" element={<EmployeeProfile />} />
             <Route path="/hr-operations" element={<HROperations />} />
             <Route path="/departments" element={<Departments />} />
             <Route path="/tasks" element={<Tasks />} />

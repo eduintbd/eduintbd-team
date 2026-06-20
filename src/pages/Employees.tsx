@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Pencil, UserPlus, Search, XCircle, Clock, ShieldCheck, Settings, CheckCircle, FileText, ExternalLink } from "lucide-react";
+import { Plus, Users, Pencil, UserPlus, Search, XCircle, Clock, ShieldCheck, Settings, CheckCircle, FileText, ExternalLink, UserCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ export default function Employees() {
   const [department, setDepartment] = useState("");
   const [createDeptDialogOpen, setCreateDeptDialogOpen] = useState(false);
   const [createPosDialogOpen, setCreatePosDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const [newEmployeeData, setNewEmployeeData] = useState({
     first_name: "",
     last_name: "",
@@ -596,18 +598,27 @@ export default function Employees() {
                       <p>{employee.position?.position_title || '-'}</p>
                       <p>{employee.department?.department_name || '-'}</p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
-                        setSelectedEmployee(employee);
-                        setEditDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 mr-2" />
-                      View/Edit
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => navigate(`/employees/${employee.id}`)}
+                      >
+                        <UserCircle className="h-3 w-3 mr-2" />
+                        Profile
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedEmployee(employee);
+                          setEditDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3 mr-2" />
+                        Edit
+                      </Button>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -631,7 +642,12 @@ export default function Employees() {
                     <tr key={employee.id} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm">{employee.employee_code}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {employee.first_name} {employee.last_name}
+                        <button
+                          onClick={() => navigate(`/employees/${employee.id}`)}
+                          className="hover:text-blue-600 hover:underline text-left"
+                        >
+                          {employee.first_name} {employee.last_name}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-blue-600">{employee.email}</td>
                       <td className="px-4 py-3 text-sm">{employee.department?.department_name || '-'}</td>
@@ -661,11 +677,21 @@ export default function Employees() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => navigate(`/employees/${employee.id}`)}
+                          className="hover:bg-blue-50"
+                          title="View profile"
+                        >
+                          <UserCircle className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
                             setSelectedEmployee(employee);
                             setEditDialogOpen(true);
                           }}
                           className="hover:bg-blue-50"
+                          title="Edit"
                         >
                           <Pencil className="h-4 w-4 text-blue-600" />
                         </Button>
