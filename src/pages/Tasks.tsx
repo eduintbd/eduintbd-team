@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, ListTodo, LayoutGrid, Filter } from "lucide-react";
+import { Plus, ListTodo, LayoutGrid, Filter, Target } from "lucide-react";
 import { TaskKanbanBoard } from "@/components/tasks/TaskKanbanBoard";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { AccountStatusPanel } from "@/components/tasks/AccountStatusPanel";
+import { KpiTaskManagementPanel } from "@/components/tasks/KpiTaskManagementPanel";
 
 export default function Tasks() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -261,6 +262,14 @@ export default function Tasks() {
             <span className="hidden sm:inline">List View</span>
             <span className="sm:hidden">List</span>
           </TabsTrigger>
+
+          {isAdmin && (
+            <TabsTrigger value="kpi-tasks" className="flex-1 sm:flex-none">
+              <Target className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">KPI Tasks</span>
+              <span className="sm:hidden">KPI</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="kanban" className="space-y-4">
@@ -283,6 +292,12 @@ export default function Tasks() {
             onDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
           />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="kpi-tasks" className="space-y-4">
+            <KpiTaskManagementPanel canEdit={isAdmin} />
+          </TabsContent>
+        )}
       </Tabs>
 
       <CreateTaskDialog

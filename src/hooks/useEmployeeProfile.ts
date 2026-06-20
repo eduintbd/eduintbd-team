@@ -84,7 +84,7 @@ export interface EmployeeKpi {
   score: number | null;
   notes: string | null;
   kind: "manager" | "self";
-  status: "pending" | "completed";
+  status: "pending" | "in_progress" | "completed";
   completed_at: string | null;
   task_date: string | null;
   attachment_url: string | null;
@@ -354,7 +354,7 @@ export interface KpiInput {
   score?: number | null;
   notes?: string | null;
   kind?: "manager" | "self";
-  status?: "pending" | "completed";
+  status?: "pending" | "in_progress" | "completed";
   completed_at?: string | null;
   task_date?: string | null;
   attachment_url?: string | null;

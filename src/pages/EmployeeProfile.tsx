@@ -543,7 +543,9 @@ export default function EmployeeProfile() {
                           </div>
                           {t.notes && <p className="text-xs text-muted-foreground mt-1">{t.notes}</p>}
                         </div>
-                        <Badge variant={done ? "default" : "secondary"}>{done ? "Completed" : "Pending"}</Badge>
+                        <Badge variant={done ? "default" : t.status === "in_progress" ? "outline" : "secondary"}>
+                          {done ? "Completed" : t.status === "in_progress" ? "In Progress" : "Pending"}
+                        </Badge>
                         {isOwner && (
                           <Button variant="ghost" size="sm" onClick={() => removeKpi(t)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         )}
