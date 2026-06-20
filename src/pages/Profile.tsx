@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Download, User, CheckCircle2, AlertCircle, Edit3, Lock } from "lucide-react";
+import { Loader2, Upload, FileText, Download, User, CheckCircle2, AlertCircle, Edit3, Lock, Target } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { z } from "zod";
@@ -634,6 +635,14 @@ const Profile = () => {
             <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
             <p className="text-muted-foreground">Manage your personal information and documents</p>
           </div>
+          {employeeData?.id && (
+            <Button asChild variant="outline">
+              <Link to={`/employees/${employeeData.id}?tab=performance`}>
+                <Target className="h-4 w-4 mr-2" />
+                My KPIs & Performance
+              </Link>
+            </Button>
+          )}
           {hasPendingUpdate && (
             <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
               <AlertCircle className="h-5 w-5 text-amber-600" />

@@ -30,6 +30,7 @@ import {
   Inbox,
   CalendarDays,
   UserCog,
+  Target,
   Pencil,
   ShoppingBasket,
   Home,
@@ -60,6 +61,7 @@ const AppLayout = () => {
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isFinanceDept, setIsFinanceDept] = useState(false);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -84,12 +86,14 @@ const AppLayout = () => {
       const { data: empData } = await supabase
         .from("employees")
         .select(`
+          id,
           department:departments(department_code)
         `)
         .eq("user_id", session.user.id)
         .single();
 
       setIsFinanceDept(empData?.department?.department_code === 'FIN');
+      setCurrentEmployeeId(empData?.id ?? null);
       setLoading(false);
     };
 
@@ -116,12 +120,16 @@ const AppLayout = () => {
   const menuItems = [
     // Profile - visible to all
     { icon: User, label: "My Profile", path: "/profile", section: "PROFILE" },
+    // Each employee's own performance / KPI page (their own profile).
+    ...(currentEmployeeId
+      ? [{ icon: Target, label: "My Performance", path: `/employees/${currentEmployeeId}?tab=performance`, section: "PROFILE" }]
+      : []),
     { icon: Mail, label: "Messages", path: "/messages", section: "PROFILE" },
     { icon: Inbox, label: "Email", path: "/email", section: "PROFILE" },
     { icon: CalendarDays, label: "Calendar", path: "/calendar", section: "PROFILE" },
-    // HR Section - visible to all
-    { icon: Users, label: "Employees", path: "/employees", section: "HR" },
-    { icon: UserCog, label: "User Management", path: "/user-management", section: "HR" },
+    // HR Section
+    { icon: Users, label: "Employees", path: "/employees", section: "HR", roles: ["admin", "manager"] },
+    { icon: UserCog, label: "User Management", path: "/user-management", section: "HR", roles: ["admin", "manager"] },
     { icon: Building2, label: "Departments", path: "/departments", section: "HR" },
     { icon: DollarSign, label: "HR Operations", path: "/hr-operations", section: "HR" },
     { icon: CheckSquare, label: "Tasks", path: "/tasks", section: "HR" },
@@ -151,7 +159,10 @@ const AppLayout = () => {
     { icon: Package, label: "Assets", path: "/assets", section: "ACCOUNTING" },
   ];
 
-  const filteredMenuItems = menuItems;
+  // Hide management-only items (e.g. the Employees directory) from regular staff.
+  const filteredMenuItems = menuItems.filter(
+    (item) => !("roles" in item) || (item as any).roles.some((r: string) => userRoles.includes(r))
+  );
 
   if (loading) {
     return (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -102,11 +102,14 @@ export default function EmployeeProfile() {
   const [completeNotes, setCompleteNotes] = useState("");
   const [completing, setCompleting] = useState(false);
 
-  const { data: currentUserId = null } = useQuery({
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "overview";
+
+  const { data: currentUserId = null, isLoading: userLoading } = useQuery({
     queryKey: ["current-user-id"],
     queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
   });
-  const { data: canManage = false } = useQuery({
+  const { data: canManage = false, isLoading: roleLoading } = useQuery({
     queryKey: ["current-user-can-manage"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -144,8 +147,23 @@ export default function EmployeeProfile() {
   const fullName = `${employee.first_name} ${employee.last_name}`;
   const initials = `${employee.first_name?.[0] ?? ""}${employee.last_name?.[0] ?? ""}`.toUpperCase();
   const isOwner = !!currentUserId && currentUserId === employee.user_id;
+  const authLoading = userLoading || roleLoading;
+  const authorized = isOwner || canManage;
   const completionFor = (commonKpiId: string) =>
     completions.find((c) => c.common_kpi_id === commonKpiId);
+
+  // Regular employees may only view their OWN profile; managers/admins view any.
+  if (authLoading) return <div className="p-8 text-muted-foreground">Loading profile…</div>;
+  if (!authorized) {
+    return (
+      <div className="p-8 space-y-4">
+        <p className="text-destructive">You don't have access to this employee's profile.</p>
+        <Button variant="outline" onClick={() => navigate("/profile")}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Go to My Profile
+        </Button>
+      </div>
+    );
+  }
 
   const saveKpi = async () => {
     if (!kpiForm) return;
@@ -301,7 +319,7 @@ export default function EmployeeProfile() {
           sub={`${totals.inflowCount} invoices · ${formatCurrency(totals.inflowInvoicedTotal)} billed`} icon={TrendingUp} accent="border-l-success" />
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList className="w-full overflow-x-auto flex sm:inline-flex">
           <TabsTrigger value="overview" className="flex-1 sm:flex-none">Companies</TabsTrigger>
           <TabsTrigger value="compensation" className="flex-1 sm:flex-none">Compensation</TabsTrigger>
