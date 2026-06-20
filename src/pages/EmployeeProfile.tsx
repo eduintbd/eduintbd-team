@@ -7,8 +7,17 @@ import {
   useEmployeeKpis,
   useUpsertKpi,
   useDeleteKpi,
+  useCompleteKpi,
+  useCommonKpis,
+  useUpsertCommonKpi,
+  useDeleteCommonKpi,
+  useCommonKpiCompletions,
+  useUpsertCompletion,
+  uploadKpiAttachment,
   type EmployeeKpi,
   type KpiInput,
+  type CommonKpi,
+  type CommonKpiInput,
 } from "@/hooks/useEmployeeProfile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +32,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   ArrowLeft, Wallet, Receipt, Handshake, TrendingUp, Building2, Mail, Phone,
-  CalendarDays, Plus, Pencil, Trash2, Target, BadgeCheck,
+  CalendarDays, Plus, Pencil, Trash2, Target, BadgeCheck, ListTodo, Globe,
+  CheckCircle2, Circle, Paperclip,
 } from "lucide-react";
 
 const formatCurrency = (amount: number) =>
@@ -54,15 +64,17 @@ function StatCard({
 }
 
 const emptyKpi = (employee_id: string): KpiInput => ({
-  employee_id,
-  period_label: "",
-  metric_name: "",
-  target_value: null,
-  actual_value: null,
-  unit: "",
-  weight: 1,
-  score: null,
-  notes: "",
+  employee_id, period_label: "", metric_name: "", target_value: null,
+  actual_value: null, unit: "", weight: 1, score: null, notes: "", kind: "manager",
+});
+
+const emptyTask = (employee_id: string): KpiInput => ({
+  employee_id, period_label: "Daily task", metric_name: "", task_date: "",
+  notes: "", kind: "self", status: "pending", weight: 0,
+});
+
+const emptyCommon = (): CommonKpiInput => ({
+  title: "", description: "", unit: "", target_value: null, period_label: "",
 });
 
 export default function EmployeeProfile() {
@@ -70,12 +82,30 @@ export default function EmployeeProfile() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useEmployeeProfile(employeeId);
   const { data: kpis = [] } = useEmployeeKpis(employeeId);
+  const { data: commonKpis = [] } = useCommonKpis();
+  const { data: completions = [] } = useCommonKpiCompletions(employeeId);
+
   const upsertKpi = useUpsertKpi();
   const deleteKpi = useDeleteKpi(employeeId ?? "");
+  const completeKpi = useCompleteKpi(employeeId ?? "");
+  const upsertCommon = useUpsertCommonKpi();
+  const deleteCommon = useDeleteCommonKpi();
+  const upsertCompletion = useUpsertCompletion(employeeId ?? "");
 
   const [kpiForm, setKpiForm] = useState<KpiInput | null>(null);
+  const [taskForm, setTaskForm] = useState<KpiInput | null>(null);
+  const [commonForm, setCommonForm] = useState<CommonKpiInput | null>(null);
+  // Completion-with-optional-attachment flow.
+  const [completeCtx, setCompleteCtx] =
+    useState<{ kind: "self" | "common"; id: string; title: string } | null>(null);
+  const [completeFile, setCompleteFile] = useState<File | null>(null);
+  const [completeNotes, setCompleteNotes] = useState("");
+  const [completing, setCompleting] = useState(false);
 
-  // Who can edit KPIs (admins / managers).
+  const { data: currentUserId = null } = useQuery({
+    queryKey: ["current-user-id"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+  });
   const { data: canManage = false } = useQuery({
     queryKey: ["current-user-can-manage"],
     queryFn: async () => {
@@ -87,13 +117,16 @@ export default function EmployeeProfile() {
     },
   });
 
+  const scoredKpis = useMemo(() => kpis.filter((k) => k.kind !== "self"), [kpis]);
+  const selfTasks = useMemo(() => kpis.filter((k) => k.kind === "self"), [kpis]);
+
   const performance = useMemo(() => {
-    const scored = kpis.filter((k) => k.score != null && k.weight > 0);
+    const scored = scoredKpis.filter((k) => k.score != null && k.weight > 0);
     const totalWeight = scored.reduce((s, k) => s + Number(k.weight), 0);
     if (totalWeight === 0) return null;
     const weighted = scored.reduce((s, k) => s + Number(k.score) * Number(k.weight), 0);
     return Math.round(weighted / totalWeight);
-  }, [kpis]);
+  }, [scoredKpis]);
 
   if (isLoading) return <div className="p-8 text-muted-foreground">Loading profile…</div>;
   if (error || !data) {
@@ -110,6 +143,9 @@ export default function EmployeeProfile() {
   const { employee, payroll, expenses, deals, inflows, byCompany, totals } = data;
   const fullName = `${employee.first_name} ${employee.last_name}`;
   const initials = `${employee.first_name?.[0] ?? ""}${employee.last_name?.[0] ?? ""}`.toUpperCase();
+  const isOwner = !!currentUserId && currentUserId === employee.user_id;
+  const completionFor = (commonKpiId: string) =>
+    completions.find((c) => c.common_kpi_id === commonKpiId);
 
   const saveKpi = async () => {
     if (!kpiForm) return;
@@ -118,7 +154,7 @@ export default function EmployeeProfile() {
       return;
     }
     try {
-      await upsertKpi.mutateAsync(kpiForm);
+      await upsertKpi.mutateAsync({ ...kpiForm, kind: "manager" });
       toast.success(kpiForm.id ? "KPI updated" : "KPI added");
       setKpiForm(null);
     } catch (e: any) {
@@ -126,14 +162,89 @@ export default function EmployeeProfile() {
     }
   };
 
+  const saveTask = async () => {
+    if (!taskForm) return;
+    if (!taskForm.metric_name.trim()) {
+      toast.error("Task name is required");
+      return;
+    }
+    try {
+      await upsertKpi.mutateAsync({ ...taskForm, kind: "self" });
+      toast.success(taskForm.id ? "Task updated" : "Task added");
+      setTaskForm(null);
+    } catch (e: any) {
+      toast.error("Failed to save task: " + e.message);
+    }
+  };
+
+  const saveCommon = async () => {
+    if (!commonForm) return;
+    if (!commonForm.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    try {
+      await upsertCommon.mutateAsync(commonForm);
+      toast.success(commonForm.id ? "Common KPI updated" : "Common KPI added");
+      setCommonForm(null);
+    } catch (e: any) {
+      toast.error("Failed to save common KPI: " + e.message);
+    }
+  };
+
   const removeKpi = async (k: EmployeeKpi) => {
-    if (!confirm(`Delete KPI "${k.metric_name}" (${k.period_label})?`)) return;
+    if (!confirm(`Delete "${k.metric_name}"?`)) return;
     try {
       await deleteKpi.mutateAsync(k.id);
-      toast.success("KPI deleted");
+      toast.success("Deleted");
     } catch (e: any) {
       toast.error("Failed to delete: " + e.message);
     }
+  };
+
+  const reopenSelf = async (k: EmployeeKpi) => {
+    try {
+      await completeKpi.mutateAsync({ id: k.id, completed: false });
+    } catch (e: any) {
+      toast.error("Failed: " + e.message);
+    }
+  };
+
+  const submitCompletion = async () => {
+    if (!completeCtx) return;
+    setCompleting(true);
+    try {
+      let attach: { attachment_url: string; attachment_name: string } | null = null;
+      if (completeFile) attach = await uploadKpiAttachment(completeFile, employee.id);
+      if (completeCtx.kind === "self") {
+        await completeKpi.mutateAsync({
+          id: completeCtx.id, completed: true,
+          attachment_url: attach?.attachment_url ?? undefined,
+          attachment_name: attach?.attachment_name ?? undefined,
+        });
+      } else {
+        await upsertCompletion.mutateAsync({
+          common_kpi_id: completeCtx.id, completed: true,
+          notes: completeNotes || null,
+          attachment_url: attach?.attachment_url ?? null,
+          attachment_name: attach?.attachment_name ?? null,
+        });
+      }
+      toast.success("Marked completed");
+      setCompleteCtx(null);
+      setCompleteFile(null);
+      setCompleteNotes("");
+    } catch (e: any) {
+      toast.error("Failed to complete: " + e.message);
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const openComplete = (kind: "self" | "common", id: string, title: string) => {
+    setCompleteFile(null);
+    setCompleteNotes("");
+    setCompleteCtx({ kind, id, title });
   };
 
   return (
@@ -155,6 +266,7 @@ export default function EmployeeProfile() {
                 <Badge variant={employee.status === "active" ? "default" : "secondary"}>
                   {employee.status ?? "—"}
                 </Badge>
+                {isOwner && <Badge variant="outline">You</Badge>}
               </div>
               <p className="text-sm text-muted-foreground">
                 {employee.position?.position_title || "—"}
@@ -387,9 +499,131 @@ export default function EmployeeProfile() {
 
         {/* Performance / KPIs */}
         <TabsContent value="performance" className="space-y-4">
+          {/* My daily tasks */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4" />KPIs & Performance</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><ListTodo className="h-4 w-4" />My Daily Tasks</CardTitle>
+              {isOwner && (
+                <Button size="sm" onClick={() => setTaskForm(emptyTask(employee.id))}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Task
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {selfTasks.length === 0 ? (
+                <p className="text-muted-foreground text-center py-6 text-sm">
+                  {isOwner ? "No tasks yet. Add your daily tasked jobs and mark them done." : "No self-logged tasks."}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {selfTasks.map((t) => {
+                    const done = t.status === "completed";
+                    return (
+                      <div key={t.id} className="flex items-start gap-3 rounded-lg border p-3">
+                        <button
+                          disabled={!isOwner}
+                          onClick={() => (done ? reopenSelf(t) : openComplete("self", t.id, t.metric_name))}
+                          className="mt-0.5 disabled:opacity-50"
+                          title={done ? "Reopen" : "Mark complete"}
+                        >
+                          {done
+                            ? <CheckCircle2 className="h-5 w-5 text-success" />
+                            : <Circle className="h-5 w-5 text-muted-foreground" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-medium text-sm ${done ? "line-through text-muted-foreground" : ""}`}>{t.metric_name}</div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                            {t.task_date && <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(t.task_date)}</span>}
+                            {done && t.completed_at && <span>Done {fmtDate(t.completed_at)}</span>}
+                            {t.attachment_url && (
+                              <a href={t.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                                <Paperclip className="h-3 w-3" />{t.attachment_name || "Attachment"}
+                              </a>
+                            )}
+                          </div>
+                          {t.notes && <p className="text-xs text-muted-foreground mt-1">{t.notes}</p>}
+                        </div>
+                        <Badge variant={done ? "default" : "secondary"}>{done ? "Completed" : "Pending"}</Badge>
+                        {isOwner && (
+                          <Button variant="ghost" size="sm" onClick={() => removeKpi(t)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Common KPIs */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" />Common KPIs</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setCommonForm(emptyCommon())}>
+                <Plus className="h-4 w-4 mr-1" /> Add Common KPI
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {commonKpis.length === 0 ? (
+                <p className="text-muted-foreground text-center py-6 text-sm">No common KPIs defined yet. Anyone can add one for the whole team.</p>
+              ) : (
+                <div className="space-y-2">
+                  {commonKpis.map((ck: CommonKpi) => {
+                    const c = completionFor(ck.id);
+                    const done = c?.status === "completed";
+                    return (
+                      <div key={ck.id} className="flex items-start gap-3 rounded-lg border p-3">
+                        <button
+                          disabled={!isOwner}
+                          onClick={() =>
+                            done
+                              ? upsertCompletion.mutateAsync({ common_kpi_id: ck.id, completed: false }).catch((e: any) => toast.error(e.message))
+                              : openComplete("common", ck.id, ck.title)
+                          }
+                          className="mt-0.5 disabled:opacity-50"
+                          title={isOwner ? (done ? "Reopen" : "Mark complete") : ""}
+                        >
+                          {done
+                            ? <CheckCircle2 className="h-5 w-5 text-success" />
+                            : <Circle className="h-5 w-5 text-muted-foreground" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">{ck.title}</div>
+                          {ck.description && <p className="text-xs text-muted-foreground mt-0.5">{ck.description}</p>}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
+                            {ck.target_value != null && <span>Target: {ck.target_value}{ck.unit ? " " + ck.unit : ""}</span>}
+                            {ck.period_label && <span>{ck.period_label}</span>}
+                            {done && c?.completed_at && <span>Done {fmtDate(c.completed_at)}</span>}
+                            {c?.attachment_url && (
+                              <a href={c.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                                <Paperclip className="h-3 w-3" />{c.attachment_name || "Attachment"}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant={done ? "default" : "secondary"}>{done ? "Completed" : "Pending"}</Badge>
+                        {(canManage || ck.created_by === currentUserId) && (
+                          <Button variant="ghost" size="sm" title="Delete common KPI"
+                            onClick={async () => {
+                              if (!confirm(`Delete common KPI "${ck.title}" for everyone?`)) return;
+                              try { await deleteCommon.mutateAsync(ck.id); toast.success("Deleted"); }
+                              catch (e: any) { toast.error(e.message); }
+                            }}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Scored / manager KPIs */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4" />Scored KPIs</CardTitle>
               {canManage && (
                 <Button size="sm" onClick={() => setKpiForm(emptyKpi(employee.id))}>
                   <Plus className="h-4 w-4 mr-1" /> Add KPI
@@ -406,9 +640,9 @@ export default function EmployeeProfile() {
                   <Progress value={performance} />
                 </div>
               )}
-              {kpis.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No KPIs recorded yet.{canManage ? " Use “Add KPI” to set targets and scores." : ""}
+              {scoredKpis.length === 0 ? (
+                <p className="text-muted-foreground text-center py-6 text-sm">
+                  No scored KPIs yet.{canManage ? " Use “Add KPI” to set targets and scores." : ""}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -425,7 +659,7 @@ export default function EmployeeProfile() {
                       </tr>
                     </thead>
                     <tbody>
-                      {kpis.map((k) => (
+                      {scoredKpis.map((k) => (
                         <tr key={k.id} className="border-b hover:bg-muted/30 align-top">
                           <td className="px-3 py-2 whitespace-nowrap">{k.period_label}</td>
                           <td className="px-3 py-2">
@@ -453,7 +687,7 @@ export default function EmployeeProfile() {
         </TabsContent>
       </Tabs>
 
-      {/* KPI add/edit dialog */}
+      {/* Scored KPI add/edit dialog */}
       <Dialog open={!!kpiForm} onOpenChange={(o) => !o && setKpiForm(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{kpiForm?.id ? "Edit KPI" : "Add KPI"}</DialogTitle></DialogHeader>
@@ -475,18 +709,6 @@ export default function EmployeeProfile() {
                 <Label>Metric *</Label>
                 <Input value={kpiForm.metric_name} placeholder="Deals closed, Content delivery…"
                   onChange={(e) => setKpiForm({ ...kpiForm, metric_name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Period start</Label>
-                  <Input type="date" value={kpiForm.period_start ?? ""}
-                    onChange={(e) => setKpiForm({ ...kpiForm, period_start: e.target.value || null })} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Period end</Label>
-                  <Input type="date" value={kpiForm.period_end ?? ""}
-                    onChange={(e) => setKpiForm({ ...kpiForm, period_end: e.target.value || null })} />
-                </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
@@ -519,8 +741,107 @@ export default function EmployeeProfile() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setKpiForm(null)}>Cancel</Button>
-            <Button onClick={saveKpi} disabled={upsertKpi.isPending}>
-              {upsertKpi.isPending ? "Saving…" : "Save"}
+            <Button onClick={saveKpi} disabled={upsertKpi.isPending}>{upsertKpi.isPending ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Daily task add/edit dialog */}
+      <Dialog open={!!taskForm} onOpenChange={(o) => !o && setTaskForm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{taskForm?.id ? "Edit Task" : "Add Daily Task"}</DialogTitle></DialogHeader>
+          {taskForm && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Task *</Label>
+                <Input value={taskForm.metric_name} placeholder="What did you work on?"
+                  onChange={(e) => setTaskForm({ ...taskForm, metric_name: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Date</Label>
+                <Input type="date" value={taskForm.task_date ?? ""}
+                  onChange={(e) => setTaskForm({ ...taskForm, task_date: e.target.value || null })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Notes</Label>
+                <Textarea rows={2} value={taskForm.notes ?? ""}
+                  onChange={(e) => setTaskForm({ ...taskForm, notes: e.target.value })} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTaskForm(null)}>Cancel</Button>
+            <Button onClick={saveTask} disabled={upsertKpi.isPending}>{upsertKpi.isPending ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Common KPI add/edit dialog */}
+      <Dialog open={!!commonForm} onOpenChange={(o) => !o && setCommonForm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{commonForm?.id ? "Edit Common KPI" : "Add Common KPI"}</DialogTitle></DialogHeader>
+          {commonForm && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Title *</Label>
+                <Input value={commonForm.title} placeholder="Applies to all employees"
+                  onChange={(e) => setCommonForm({ ...commonForm, title: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Description</Label>
+                <Textarea rows={2} value={commonForm.description ?? ""}
+                  onChange={(e) => setCommonForm({ ...commonForm, description: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label>Target</Label>
+                  <Input type="number" value={commonForm.target_value ?? ""}
+                    onChange={(e) => setCommonForm({ ...commonForm, target_value: e.target.value === "" ? null : Number(e.target.value) })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Unit</Label>
+                  <Input value={commonForm.unit ?? ""}
+                    onChange={(e) => setCommonForm({ ...commonForm, unit: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Period</Label>
+                  <Input value={commonForm.period_label ?? ""} placeholder="Monthly"
+                    onChange={(e) => setCommonForm({ ...commonForm, period_label: e.target.value })} />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCommonForm(null)}>Cancel</Button>
+            <Button onClick={saveCommon} disabled={upsertCommon.isPending}>{upsertCommon.isPending ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Completion + optional attachment dialog */}
+      <Dialog open={!!completeCtx} onOpenChange={(o) => !o && setCompleteCtx(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Mark completed</DialogTitle></DialogHeader>
+          {completeCtx && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">{completeCtx.title}</p>
+              {completeCtx.kind === "common" && (
+                <div className="space-y-1">
+                  <Label>Notes (optional)</Label>
+                  <Textarea rows={2} value={completeNotes} onChange={(e) => setCompleteNotes(e.target.value)} />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="inline-flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" />Attachment (optional)</Label>
+                <Input type="file" onChange={(e) => setCompleteFile(e.target.files?.[0] ?? null)} />
+                {completeFile && <p className="text-xs text-muted-foreground">{completeFile.name}</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteCtx(null)}>Cancel</Button>
+            <Button onClick={submitCompletion} disabled={completing}>
+              {completing ? "Saving…" : <><CheckCircle2 className="h-4 w-4 mr-1" />Mark complete</>}
             </Button>
           </DialogFooter>
         </DialogContent>

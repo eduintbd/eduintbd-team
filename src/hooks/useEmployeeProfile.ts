@@ -83,7 +83,36 @@ export interface EmployeeKpi {
   weight: number;
   score: number | null;
   notes: string | null;
+  kind: "manager" | "self";
+  status: "pending" | "completed";
+  completed_at: string | null;
+  task_date: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
   created_at: string;
+}
+
+export interface CommonKpi {
+  id: string;
+  title: string;
+  description: string | null;
+  unit: string | null;
+  target_value: number | null;
+  period_label: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface CommonKpiCompletion {
+  id: string;
+  common_kpi_id: string;
+  employee_id: string;
+  status: "pending" | "completed";
+  completed_at: string | null;
+  notes: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
 }
 
 export interface EmployeeProfileData {
@@ -324,6 +353,12 @@ export interface KpiInput {
   weight?: number;
   score?: number | null;
   notes?: string | null;
+  kind?: "manager" | "self";
+  status?: "pending" | "completed";
+  completed_at?: string | null;
+  task_date?: string | null;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
 }
 
 export function useUpsertKpi() {
@@ -353,4 +388,146 @@ export function useDeleteKpi(employeeId: string) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employee-kpis", employeeId] }),
   });
+}
+
+// Mark a self/daily-task KPI complete (or reopen it), with an optional attachment.
+export function useCompleteKpi(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      completed: boolean;
+      attachment_url?: string | null;
+      attachment_name?: string | null;
+    }) => {
+      const patch: Record<string, unknown> = {
+        status: input.completed ? "completed" : "pending",
+        completed_at: input.completed ? new Date().toISOString() : null,
+      };
+      if (input.attachment_url !== undefined) patch.attachment_url = input.attachment_url;
+      if (input.attachment_name !== undefined) patch.attachment_name = input.attachment_name;
+      const { error } = await db.from("employee_kpis").update(patch).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["employee-kpis", employeeId] }),
+  });
+}
+
+// ---- Common (org-wide) KPIs -------------------------------------------------
+
+export function useCommonKpis() {
+  return useQuery<CommonKpi[]>({
+    queryKey: ["common-kpis"],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("common_kpis")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CommonKpi[];
+    },
+  });
+}
+
+export interface CommonKpiInput {
+  id?: string;
+  title: string;
+  description?: string | null;
+  unit?: string | null;
+  target_value?: number | null;
+  period_label?: string | null;
+}
+
+export function useUpsertCommonKpi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CommonKpiInput) => {
+      const { id, ...fields } = input;
+      if (id) {
+        const { error } = await db.from("common_kpis").update(fields).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await db.from("common_kpis").insert(fields);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["common-kpis"] }),
+  });
+}
+
+export function useDeleteCommonKpi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await db.from("common_kpis").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["common-kpis"] }),
+  });
+}
+
+export function useCommonKpiCompletions(employeeId: string | undefined) {
+  return useQuery<CommonKpiCompletion[]>({
+    enabled: !!employeeId,
+    queryKey: ["common-kpi-completions", employeeId],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("common_kpi_completions")
+        .select("*")
+        .eq("employee_id", employeeId);
+      if (error) throw error;
+      return (data ?? []) as CommonKpiCompletion[];
+    },
+  });
+}
+
+// Create or update this employee's completion of a common KPI (one row per pair).
+export function useUpsertCompletion(employeeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      common_kpi_id: string;
+      completed: boolean;
+      notes?: string | null;
+      attachment_url?: string | null;
+      attachment_name?: string | null;
+    }) => {
+      const row = {
+        common_kpi_id: input.common_kpi_id,
+        employee_id: employeeId,
+        status: input.completed ? "completed" : "pending",
+        completed_at: input.completed ? new Date().toISOString() : null,
+        notes: input.notes ?? null,
+        attachment_url: input.attachment_url ?? null,
+        attachment_name: input.attachment_name ?? null,
+      };
+      const { error } = await db
+        .from("common_kpi_completions")
+        .upsert(row, { onConflict: "common_kpi_id,employee_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["common-kpi-completions", employeeId] }),
+  });
+}
+
+// Upload an optional attachment to the private kpi-attachments bucket and return
+// a signed URL (the bucket is not public) plus the original file name.
+export async function uploadKpiAttachment(
+  file: File,
+  pathPrefix: string
+): Promise<{ attachment_url: string; attachment_name: string }> {
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${pathPrefix}/${Date.now()}_${safe}`;
+  const { error: upErr } = await db.storage.from("kpi-attachments").upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+  if (upErr) throw upErr;
+  // Long-lived signed URL (10 years) so the stored link keeps working.
+  const { data, error: signErr } = await db.storage
+    .from("kpi-attachments")
+    .createSignedUrl(path, 60 * 60 * 24 * 3650);
+  if (signErr) throw signErr;
+  return { attachment_url: data.signedUrl, attachment_name: file.name };
 }
