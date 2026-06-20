@@ -567,7 +567,9 @@ export default function EmployeeProfile() {
                         <Badge variant={done ? "default" : t.status === "in_progress" ? "outline" : "secondary"}>
                           {done ? "Completed" : t.status === "in_progress" ? "In Progress" : "Pending"}
                         </Badge>
-                        {isOwner && (
+                        {/* Only managers/admins may delete a logged task; the
+                            employee can update progress and add remarks only. */}
+                        {canManage && (
                           <Button variant="ghost" size="sm" onClick={() => removeKpi(t)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         )}
                       </div>
