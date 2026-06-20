@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { NotificationBell } from "./NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +57,7 @@ import { toast } from "sonner";
 
 const AppLayout = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,6 +106,9 @@ const AppLayout = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (!session) {
+        // Drop all cached per-user data so the next account starts clean
+        // (query keys like the role check are not user-scoped).
+        queryClient.clear();
         navigate("/auth");
       }
     });
@@ -113,6 +118,7 @@ const AppLayout = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    queryClient.clear();
     toast.success("Signed out successfully");
     navigate("/auth");
   };
