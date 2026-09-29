@@ -29,6 +29,27 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
+    // Only a signed-in admin or HR manager may reset someone else's password.
+    const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+    const { data: caller, error: callerError } = await supabaseAdmin.auth.getUser(token);
+    if (callerError || !caller?.user) {
+      return new Response(JSON.stringify({ error: "Not signed in" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    const { data: roles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.user.id)
+      .in("role", ["admin", "hr_manager"]);
+    if (!roles || roles.length === 0) {
+      return new Response(JSON.stringify({ error: "Only admins and HR managers can reset passwords" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const { email, newPassword }: ResetPasswordRequest = await req.json();
 
     if (!email || !newPassword) {
