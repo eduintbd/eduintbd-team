@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 supabase/functions/.env
 *.db
 *.sqlite
@@ -12,3 +14,5 @@ ios/
 .claude/
 supabase/.temp/
 debug/
+# Google OAuth client secret downloads — never commit
+client_secret_*.json

@@ -1,0 +1,3 @@
+# Coolify builds this repo with Nixpacks. Force the Node provider: the supabase/functions
+# folder (Deno) otherwise makes Nixpacks think this is a Deno app.
+providers = ["node"]
